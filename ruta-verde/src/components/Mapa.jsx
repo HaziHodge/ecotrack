@@ -6,6 +6,25 @@ export default function Mapa({ alertasCount, desktopView }) {
   const [showPanel, setShowPanel] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [tooltip, setTooltip] = useState(null);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+
+  const handleDragStart = (e) => {
+    setIsDragging(true);
+    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+    setStartPos({ x: clientX - offset.x, y: clientY - offset.y });
+  };
+
+  const handleDrag = (e) => {
+    if (!isDragging) return;
+    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+    setOffset({ x: clientX - startPos.x, y: clientY - startPos.y });
+  };
+
+  const handleDragEnd = () => setIsDragging(false);
 
   const toggleLayer = (layer) => {
     setActiveLayers(prev => prev.includes(layer) ? prev.filter(l => l !== layer) : [...prev, layer]);
@@ -43,18 +62,28 @@ export default function Mapa({ alertasCount, desktopView }) {
   ];
 
   return (
-    <div className={`h-full relative overflow-hidden bg-surface animate-fade-in ${desktopView ? 'rounded-[64px] shadow-2xl border-8 border-white' : ''}`}>
+    <div className={`h-full relative overflow-hidden bg-surface dark:bg-[#0D1117] animate-fade-in ${desktopView ? 'rounded-[64px] shadow-2xl border-8 border-white dark:border-gray-800' : ''}`}>
       {/* SVG MAP */}
+      <div
+        className="w-full h-full cursor-grab active:cursor-grabbing touch-none relative"
+        onMouseDown={handleDragStart}
+        onMouseMove={handleDrag}
+        onMouseUp={handleDragEnd}
+        onMouseLeave={handleDragEnd}
+        onTouchStart={handleDragStart}
+        onTouchMove={handleDrag}
+        onTouchEnd={handleDragEnd}
+      >
       <svg
         viewBox="0 0 390 600"
-        className={`w-full h-full cursor-grab active:cursor-grabbing transition-transform duration-500 ease-out origin-center ${desktopView ? 'p-8' : ''}`}
-        style={{ transform: `scale(${zoom})` }}
+        className="w-full h-full transition-transform duration-150 ease-out origin-center"
+        style={{ transform: `scale(${zoom}) translate(${offset.x / zoom}px, ${offset.y / zoom}px)` }}
       >
         {/* Estructura urbana */}
-        <rect width="390" height="600" fill="#E8F5E9" />
+        <rect width="390" height="600" fill="#E8F5E9" className="dark:fill-[#1a2e1c]" />
 
         {/* Grid de calles */}
-        <g stroke="#E0E0E0" strokeWidth="0.5">
+        <g stroke="#E0E0E0" strokeWidth="0.5" className="dark:stroke-gray-700">
           {Array.from({ length: 20 }).map((_, i) => (
             <React.Fragment key={i}>
               <line x1="0" y1={i * 40} x2="390" y2={i * 40} />
@@ -127,19 +156,20 @@ export default function Mapa({ alertasCount, desktopView }) {
         ))}
 
         {/* Tu ubicación */}
-        <g>
-          <circle cx="200" cy="350" r="12" fill="#00C896" fillOpacity="0.3" className="animate-pulse" />
+        <g className="animate-pulse">
+          <circle cx="200" cy="350" r="12" fill="#00C896" fillOpacity="0.3" />
           <circle cx="200" cy="350" r="5" fill="#00C896" stroke="white" strokeWidth="2.5" />
         </g>
       </svg>
+      </div>
 
       {/* TOOLTIP ESTACION */}
       {tooltip && (
         <div
-          className="absolute bg-white p-4 rounded-2xl shadow-2xl z-50 border border-gray-100 flex items-center gap-3 animate-slide-up"
+          className="absolute bg-white dark:bg-[#1C2128] p-4 rounded-2xl shadow-2xl z-50 border border-gray-100 dark:border-gray-800 flex items-center gap-3 animate-slide-up pointer-events-auto"
           style={{
-            top: tooltip.y * zoom / (600/600) - 80,
-            left: tooltip.x * zoom / (390/390) - 100
+            top: (tooltip.y * zoom) + offset.y - 80,
+            left: (tooltip.x * zoom) + offset.x - 100
           }}
         >
           <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-black" style={{ background: tooltip.line === 'L1' ? '#E53935' : '#FDD835' }}>M</div>
@@ -152,19 +182,19 @@ export default function Mapa({ alertasCount, desktopView }) {
       )}
 
       {/* CONTROLES FLOTANTES */}
-      <div className="absolute top-6 left-6 z-40 bg-white/80 backdrop-blur-md p-4 rounded-3xl shadow-xl space-y-4">
-         <button onClick={() => setZoom(z => Math.min(z + 0.2, 2.5))} className="w-10 h-10 flex items-center justify-center bg-white rounded-2xl text-secondary active:scale-90 transition-all shadow-sm"><Plus size={22}/></button>
-         <button onClick={() => setZoom(z => Math.max(z - 0.2, 0.8))} className="w-10 h-10 flex items-center justify-center bg-white rounded-2xl text-secondary active:scale-90 transition-all shadow-sm"><Minus size={22}/></button>
+      <div className="absolute top-6 left-6 z-40 bg-white/80 dark:bg-[#1C2128]/80 backdrop-blur-md p-4 rounded-3xl shadow-xl space-y-4">
+         <button onClick={() => setZoom(z => Math.min(z + 0.2, 2.5))} className="w-10 h-10 flex items-center justify-center bg-white dark:bg-[#1C2128] rounded-2xl text-secondary dark:text-white active:scale-95 transition-all shadow-sm cursor-pointer"><Plus size={22}/></button>
+         <button onClick={() => setZoom(z => Math.max(z - 0.2, 0.8))} className="w-10 h-10 flex items-center justify-center bg-white dark:bg-[#1C2128] rounded-2xl text-secondary dark:text-white active:scale-95 transition-all shadow-sm cursor-pointer"><Minus size={22}/></button>
       </div>
 
       <div className="absolute top-6 right-6 z-40 flex flex-col items-end gap-3">
         <button
           onClick={() => setShowPanel(!showPanel)}
-          className="bg-white/80 backdrop-blur-md px-5 py-3 rounded-full shadow-xl flex items-center gap-2 font-black text-xs text-secondary active:scale-95 transition-all"
+          className="bg-white/80 dark:bg-[#1C2128]/80 backdrop-blur-md px-5 py-3 rounded-full shadow-xl flex items-center gap-2 font-black text-xs text-secondary dark:text-white active:scale-95 transition-all cursor-pointer"
         >
           <Bell size={18} className="text-primary" /> Alertas ({alertasCount})
         </button>
-        <div className="bg-white/80 backdrop-blur-md p-2 rounded-2xl shadow-xl flex flex-col gap-1">
+        <div className="bg-white/80 dark:bg-[#1C2128]/80 backdrop-blur-md p-2 rounded-2xl shadow-xl flex flex-col gap-1">
           {[
             { id: 'metro', icon: <Train size={20}/> },
             { id: 'bici', icon: <Bike size={20}/> },

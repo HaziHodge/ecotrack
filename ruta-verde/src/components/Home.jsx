@@ -7,18 +7,31 @@ export default function Home({ user, onSearch }) {
   const [swapping, setSwapping] = useState(false);
   const [clickCount, setClickCount] = useState(0);
   const [showEasterEgg, setShowEasterEgg] = useState(false);
+  const [confetti, setConfetti] = useState([]);
 
   const handleLogoClick = () => {
     const newCount = clickCount + 1;
     setClickCount(newCount);
     if (newCount === 5) {
       setShowEasterEgg(true);
+      // Generate 50 confetti pieces
+      const newConfetti = Array.from({ length: 50 }).map((_, i) => ({
+        id: i,
+        left: Math.random() * 100,
+        delay: Math.random() * 2,
+        color: ['#00C896', '#FFD93D', '#FF6B6B', '#1E88E5'][Math.floor(Math.random() * 4)]
+      }));
+      setConfetti(newConfetti);
+
       setTimeout(() => {
         setShowEasterEgg(false);
         setClickCount(0);
+        setConfetti([]);
       }, 4000);
     }
   };
+
+  const [errorInputs, setErrorInputs] = useState(false);
 
   const handleSwap = () => {
     setSwapping(true);
@@ -26,6 +39,15 @@ export default function Home({ user, onSearch }) {
     setFrom(to);
     setTo(temp);
     setTimeout(() => setSwapping(false), 300);
+  };
+
+  const validateSearch = () => {
+    if (!from || !to) {
+      setErrorInputs(true);
+      setTimeout(() => setErrorInputs(false), 500);
+      return;
+    }
+    onSearch({ from, to });
   };
 
   const routes = [
@@ -66,39 +88,39 @@ export default function Home({ user, onSearch }) {
 
       {/* SECCIÓN 2 — BUSCADOR DE RUTA */}
       <div className="px-6 -mt-10 relative z-20">
-        <div className="bg-white rounded-3xl p-6 shadow-green border border-gray-50 space-y-4">
+        <div className={`bg-white dark:bg-[#1C2128] rounded-3xl p-6 shadow-green border border-gray-50 dark:border-gray-800 space-y-4 transition-all duration-300 ${errorInputs ? 'animate-shake border-error' : ''}`}>
           <div className="relative">
             <div className="space-y-3">
-              <div className="flex items-center gap-3 bg-gray-50 p-4 rounded-2xl border border-transparent focus-within:border-primary/30 transition-all">
+              <div className={`flex items-center gap-3 bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border transition-all ${!from && errorInputs ? 'border-error' : 'border-transparent focus-within:border-primary/30'}`}>
                 <div className="w-3 h-3 rounded-full bg-blue-500" />
                 <input
                   value={from}
                   onChange={(e) => setFrom(e.target.value)}
                   placeholder="¿Desde dónde?"
-                  className="bg-transparent text-sm font-bold focus:outline-none w-full text-secondary"
+                  className="bg-transparent text-[16px] font-bold focus:outline-none w-full text-secondary dark:text-white"
                 />
               </div>
-              <div className="border-t border-dashed border-gray-200 mx-8" />
-              <div className="flex items-center gap-3 bg-gray-50 p-4 rounded-2xl border border-transparent focus-within:border-primary/30 transition-all">
+              <div className="border-t border-dashed border-gray-200 dark:border-gray-700 mx-8" />
+              <div className={`flex items-center gap-3 bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border transition-all ${!to && errorInputs ? 'border-error' : 'border-transparent focus-within:border-primary/30'}`}>
                 <div className="w-3 h-3 rounded-full bg-primary" />
                 <input
                   value={to}
                   onChange={(e) => setTo(e.target.value)}
                   placeholder="¿A dónde?"
-                  className="bg-transparent text-sm font-bold focus:outline-none w-full text-secondary"
+                  className="bg-transparent text-[16px] font-bold focus:outline-none w-full text-secondary dark:text-white"
                 />
               </div>
             </div>
             <button
               onClick={handleSwap}
-              className={`absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all z-10 ${swapping ? 'rotate-180' : ''}`}
+              className={`absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all z-10 duration-300 cursor-pointer ${swapping ? 'rotate-180 scale-110' : ''}`}
             >
               <ArrowUpDown size={20} />
             </button>
           </div>
           <button
-            onClick={() => onSearch({ from, to })}
-            className="w-full py-4 bg-gradient-to-r from-primary to-[#00A878] text-white rounded-2xl font-black text-lg shadow-xl shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+            onClick={validateSearch}
+            className="w-full py-4 bg-gradient-to-r from-primary to-[#00A878] text-white rounded-2xl font-black text-lg shadow-xl shadow-primary/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Search size={22} /> Buscar ruta
           </button>
@@ -177,11 +199,22 @@ export default function Home({ user, onSearch }) {
 
       {/* EASTER EGG OVERLAY */}
       {showEasterEgg && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
-          <div className="bg-white p-8 rounded-[40px] shadow-2xl border-4 border-primary animate-bounce text-center flex flex-col items-center gap-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none overflow-hidden">
+          {confetti.map(c => (
+            <div
+              key={c.id}
+              className="absolute top-[-20px] w-3 h-3 rounded-sm animate-confetti"
+              style={{
+                left: `${c.left}%`,
+                backgroundColor: c.color,
+                animationDelay: `${c.delay}s`
+              }}
+            />
+          ))}
+          <div className="bg-white dark:bg-[#1C2128] p-8 rounded-[40px] shadow-2xl border-4 border-primary animate-bounce text-center flex flex-col items-center gap-4 z-20">
              <div className="text-6xl animate-pulse">🌍</div>
-             <h3 className="text-2xl font-black text-secondary tracking-tighter">¡Tú sí que eres verde!</h3>
-             <p className="text-sm font-bold text-gray-500">Has desbloqueado un secreto sustentable.</p>
+             <h3 className="text-2xl font-black text-secondary dark:text-white tracking-tighter">¡Eres un Guardián Verde! 🌍</h3>
+             <p className="text-sm font-bold text-gray-500 dark:text-gray-400">Has desbloqueado un secreto sustentable.</p>
              <div className="flex gap-2">
                 {Array.from({length: 12}).map((_, i) => (
                   <div key={i} className="w-2 h-2 bg-primary rounded-full animate-ping" style={{ animationDelay: `${i * 0.1}s` }} />
@@ -193,21 +226,25 @@ export default function Home({ user, onSearch }) {
 
       {/* SECCIÓN 6 — ACCESOS RÁPIDOS */}
       <div className="px-6 space-y-4 mb-4">
-        <h3 className="font-black text-lg text-secondary">Mis lugares</h3>
+        <h3 className="font-black text-lg text-secondary dark:text-white">Mis lugares</h3>
         <div className="flex justify-between">
           {[
-            { label: 'Trabajo', icon: <Navigation size={22} /> },
-            { label: 'Casa', icon: <HomeIcon size={22} /> },
-            { label: 'Gym', icon: <Star size={22} /> },
+            { label: 'Trabajo', icon: <Navigation size={22} />, target: 'Costanera Center' },
+            { label: 'Casa', icon: <HomeIcon size={22} />, target: 'Maipú' },
+            { label: 'Gym', icon: <Star size={22} />, target: 'Parque Arauco' },
             { label: 'Agregar', icon: <Plus size={22} />, isAdd: true }
           ].map((item, i) => (
-            <button key={i} className="flex flex-col items-center gap-2 group">
-              <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all group-active:scale-90 ${
-                item.isAdd ? 'bg-gray-100 text-gray-400' : 'bg-white text-primary shadow-lg shadow-gray-200'
+            <button
+              key={i}
+              onClick={() => !item.isAdd && onSearch({ from: 'Mi ubicación', to: item.target })}
+              className="flex flex-col items-center gap-2 group cursor-pointer"
+            >
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all active:scale-95 ${
+                item.isAdd ? 'bg-gray-100 dark:bg-gray-800 text-gray-400' : 'bg-white dark:bg-gray-800 text-primary shadow-lg shadow-gray-200 dark:shadow-none'
               }`}>
                 {item.icon}
               </div>
-              <span className="text-[11px] font-black text-gray-500">{item.label}</span>
+              <span className="text-[11px] font-black text-gray-500 dark:text-gray-400">{item.label}</span>
             </button>
           ))}
         </div>
