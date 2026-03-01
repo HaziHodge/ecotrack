@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #00C896;
+  --color-secondary: #1A1A2E;
+  --color-accent: #FFD93D;
+  --color-surface: #F0FFF8;
+  --color-text-primary: #0D1B2A;
+  --color-text-secondary: #6B7280;
+  --color-error: #FF6B6B;
+  --color-success: #00C896;
+  --color-card: #FFFFFF;
+}
+
+:root {
+  --primary: #00C896;
+  --secondary: #1A1A2E;
+  --accent: #FFD93D;
+  --surface: #F0FFF8;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  color: var(--text-primary);
+  background-color: var(--surface);
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.shadow-green {
+  box-shadow: 0 10px 25px -5px rgba(0, 200, 150, 0.3);
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.bg-hero-gradient {
+  background: linear-gradient(135deg, #1A1A2E 0%, #16213E 100%);
+}
