@@ -5,6 +5,20 @@ export default function Home({ user, onSearch }) {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [swapping, setSwapping] = useState(false);
+  const [clickCount, setClickCount] = useState(0);
+  const [showEasterEgg, setShowEasterEgg] = useState(false);
+
+  const handleLogoClick = () => {
+    const newCount = clickCount + 1;
+    setClickCount(newCount);
+    if (newCount === 5) {
+      setShowEasterEgg(true);
+      setTimeout(() => {
+        setShowEasterEgg(false);
+        setClickCount(0);
+      }, 4000);
+    }
+  };
 
   const handleSwap = () => {
     setSwapping(true);
@@ -32,10 +46,15 @@ export default function Home({ user, onSearch }) {
       <header className="bg-gradient-to-br from-[#1A1A2E] to-[#16213E] p-8 pb-12 text-white rounded-b-[40px] shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full -mr-16 -mt-16 blur-3xl" />
         <div className="flex justify-between items-start relative z-10">
-          <div>
-            <h1 className="text-2xl font-black mb-1">Buenos días, {user.name} 👋</h1>
-            <p className="text-white/60 text-sm flex items-center gap-1 font-medium">
-              <MapPin size={14} className="text-primary" /> {user.city}, Chile • {new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric' })}
+          <div onClick={handleLogoClick} className="cursor-pointer active:scale-95 transition-transform">
+            <h1 className="text-2xl font-black mb-1 flex items-center gap-2">
+              <span className="text-primary">RUTA</span> VERDE
+              {clickCount > 0 && <span className="text-[10px] bg-primary/20 px-2 py-0.5 rounded-full">{clickCount}</span>}
+            </h1>
+            <p className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em] mb-4">"Muévete mejor. Contamina menos."</p>
+            <h2 className="text-xl font-black">Hola, {user.name} 👋</h2>
+            <p className="text-white/40 text-xs flex items-center gap-1 font-bold mt-1">
+              <MapPin size={12} className="text-primary" /> {user.city}, Chile
             </p>
           </div>
           <button className="relative p-3 bg-white/10 rounded-2xl backdrop-blur-md active:scale-95 transition-all">
@@ -152,6 +171,22 @@ export default function Home({ user, onSearch }) {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* EASTER EGG OVERLAY */}
+      {showEasterEgg && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none">
+          <div className="bg-white p-8 rounded-[40px] shadow-2xl border-4 border-primary animate-bounce text-center flex flex-col items-center gap-4">
+             <div className="text-6xl animate-pulse">🌍</div>
+             <h3 className="text-2xl font-black text-secondary tracking-tighter">¡Tú sí que eres verde!</h3>
+             <p className="text-sm font-bold text-gray-500">Has desbloqueado un secreto sustentable.</p>
+             <div className="flex gap-2">
+                {Array.from({length: 12}).map((_, i) => (
+                  <div key={i} className="w-2 h-2 bg-primary rounded-full animate-ping" style={{ animationDelay: `${i * 0.1}s` }} />
+                ))}
+             </div>
           </div>
         </div>
       )}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { MapPin, Bell, Layers, Plus, Minus, X, AlertTriangle, Bike, Zap, Train } from 'lucide-react';
 
-export default function Mapa({ alertasCount }) {
+export default function Mapa({ alertasCount, desktopView }) {
   const [activeLayers, setActiveLayers] = useState(['metro', 'bici', 'scooter', 'alertas']);
   const [showPanel, setShowPanel] = useState(false);
   const [zoom, setZoom] = useState(1);
@@ -43,11 +43,11 @@ export default function Mapa({ alertasCount }) {
   ];
 
   return (
-    <div className="h-full relative overflow-hidden bg-surface animate-fade-in">
+    <div className={`h-full relative overflow-hidden bg-surface animate-fade-in ${desktopView ? 'rounded-[64px] shadow-2xl border-8 border-white' : ''}`}>
       {/* SVG MAP */}
       <svg
         viewBox="0 0 390 600"
-        className="w-full h-full cursor-grab active:cursor-grabbing transition-transform duration-500 ease-out origin-center"
+        className={`w-full h-full cursor-grab active:cursor-grabbing transition-transform duration-500 ease-out origin-center ${desktopView ? 'p-8' : ''}`}
         style={{ transform: `scale(${zoom})` }}
       >
         {/* Estructura urbana */}
