@@ -2,4 +2,22 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './RutaVerde.jsx'
 import './index.css'
-ReactDOM.createRoot(document.getElementById('root')).render(<App />)
+import { reportWebVitals } from './utils/vitals'
+import 'leaflet/dist/leaflet.css'
+import L from 'leaflet'
+
+// Fix for broken Leaflet icons in Vite
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+)
+
+reportWebVitals(console.log);
