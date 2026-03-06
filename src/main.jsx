@@ -2,7 +2,6 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './RutaVerde.jsx'
 import './index.css'
-import { reportWebVitals } from './utils/vitals'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 
@@ -19,7 +18,3 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <App />
   </React.StrictMode>
 )
-
-if (import.meta.env.DEV) {
-  reportWebVitals(console.log);
-}
