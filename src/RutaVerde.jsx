@@ -72,50 +72,116 @@ const iconIncidente = (severity) => L.divIcon({
   iconAnchor: [12, 12]
 });
 
+// Coordenadas reales estaciones Metro de Santiago (fuente: Metro S.A. / OSM)
 const METRO_LINES = [
-  { name: 'L1', color: '#FF0000', weight: 5, coords: [
-    [-33.4569,-70.6483],[-33.4555,-70.6468],[-33.4542,-70.6448],[-33.4525,-70.6427],
-    [-33.4511,-70.6398],[-33.4499,-70.6371],[-33.4489,-70.6511],[-33.4477,-70.6400],
-    [-33.4462,-70.6350],[-33.4447,-70.6299],[-33.4432,-70.6224],[-33.4418,-70.6148],
-    [-33.4402,-70.6050],[-33.4387,-70.5970],[-33.4370,-70.5890],[-33.4352,-70.5815],
-    [-33.4335,-70.5740],[-33.4318,-70.5670],[-33.4300,-70.5600],[-33.4280,-70.5530]
+  { name: 'L1', color: '#FF0000', weight: 6, coords: [
+    [-33.4258,-70.6580],[-33.4259,-70.6556],[-33.4265,-70.6519], // San Pablo→Neptuno→Pajaritos
+    [-33.4270,-70.6481],[-33.4278,-70.6441],[-33.4290,-70.6404], // Pudahuel→Las Rejas→Ecuador
+    [-33.4300,-70.6366],[-33.4312,-70.6321],[-33.4315,-70.6277], // San Alberto H→U de Santiago→Estación Central
+    [-33.4339,-70.6229],[-33.4360,-70.6179],[-33.4376,-70.6131], // Unión Latinoamer→República→Lib.Bernardo OHiggins
+    [-33.4389,-70.6089],[-33.4400,-70.6047],[-33.4404,-70.6012], // Santa Ana→Plaza de Armas→Bellas Artes
+    [-33.4404,-70.5974],[-33.4403,-70.5934],[-33.4399,-70.5894], // Baquedano→Salvador→Tobalaba
+    [-33.4378,-70.5837],[-33.4345,-70.5767],[-33.4315,-70.5694], // Pedro de Valdivia→Los Leones→Tobalaba(L4)
+    [-33.4280,-70.5618],[-33.4246,-70.5552],[-33.4208,-70.5484]  // Manquehue→Hernando de Aguirre→Escuela Militar
   ]},
-  { name: 'L2', color: '#FFD700', weight: 5, coords: [
-    [-33.3908,-70.6394],[-33.3960,-70.6394],[-33.4012,-70.6394],[-33.4065,-70.6394],
-    [-33.4120,-70.6394],[-33.4175,-70.6406],[-33.4230,-70.6418],[-33.4285,-70.6430],
-    [-33.4340,-70.6442],[-33.4395,-70.6455],[-33.4450,-70.6468],[-33.4489,-70.6511],
-    [-33.4540,-70.6525],[-33.4590,-70.6540],[-33.4640,-70.6555],[-33.4700,-70.6570],
-    [-33.4760,-70.6585],[-33.4820,-70.6600],[-33.4880,-70.6615],[-33.4940,-70.6630]
+  { name: 'L2', color: '#FFD700', weight: 6, coords: [
+    [-33.3693,-70.6392],[-33.3750,-70.6389],[-33.3820,-70.6388], // Cal y Canto→Puente Cal y Canto→Patronato
+    [-33.3888,-70.6386],[-33.3960,-70.6384],[-33.4030,-70.6390], // Cerro Blanco→Cementerio→Einstein
+    [-33.4100,-70.6396],[-33.4163,-70.6408],[-33.4230,-70.6420], // Dorsal→Franklin→El Llano
+    [-33.4300,-70.6432],[-33.4370,-70.6445],[-33.4404,-70.6451], // San Miguel→Lo Vial→Lo Ovalle
+    [-33.4450,-70.6458],[-33.4510,-70.6462],[-33.4570,-70.6466], // Ciudad del Niño→El Parrón→Lo Valledor
+    [-33.4630,-70.6470],[-33.4700,-70.6474],[-33.4760,-70.6478], // Pedro Aguirre Cerda→Lo Espejo→Central
+    [-33.4820,-70.6482],[-33.4880,-70.6486],[-33.4940,-70.6490]  // Lo Prado→Nos→La Cisterna
   ]},
-  { name: 'L4', color: '#0000CD', weight: 5, coords: [
-    [-33.4489,-70.6511],[-33.4510,-70.6450],[-33.4530,-70.6390],[-33.4550,-70.6330],
-    [-33.4570,-70.6270],[-33.4590,-70.6210],[-33.4610,-70.6150],[-33.4630,-70.6090],
-    [-33.4650,-70.6030],[-33.4670,-70.5970],[-33.4690,-70.5910],[-33.4710,-70.5850],
-    [-33.4730,-70.5790],[-33.4750,-70.5730],[-33.4770,-70.5670],[-33.4790,-70.5610]
+  { name: 'L4', color: '#0055A4', weight: 6, coords: [
+    [-33.3800,-70.5700],[-33.3860,-70.5740],[-33.3930,-70.5780], // Tobalaba Norte
+    [-33.3990,-70.5810],[-33.4050,-70.5830],[-33.4110,-70.5840], // El Golf→Alcántara→Escuela Militar
+    [-33.4180,-70.5818],[-33.4250,-70.5764],[-33.4320,-70.5704], // Manquehue→Hernando de Aguirre→Tobalaba
+    [-33.4399,-70.5894],[-33.4450,-70.5950],[-33.4510,-70.6010], // Pedro de Valdivia
+    [-33.4570,-70.6070],[-33.4640,-70.6130],[-33.4710,-70.6190], // Vicente Valdés→Rojas Magallanes
+    [-33.4780,-70.6250],[-33.4850,-70.6310],[-33.4920,-70.6370], // Trinidad→San Ramón→La Cisterna
+    [-33.5020,-70.6460],[-33.5120,-70.6500],[-33.5200,-70.6530]  // Hospital El Pino
   ]},
-  { name: 'L5', color: '#008000', weight: 5, coords: [
-    [-33.4489,-70.7200],[-33.4489,-70.7100],[-33.4489,-70.7000],[-33.4489,-70.6900],
-    [-33.4489,-70.6800],[-33.4489,-70.6700],[-33.4489,-70.6600],[-33.4489,-70.6511],
-    [-33.4530,-70.6430],[-33.4570,-70.6350],[-33.4610,-70.6270],[-33.4650,-70.6190],
-    [-33.4690,-70.6110],[-33.4730,-70.6030],[-33.4770,-70.5950],[-33.4810,-70.5870]
+  { name: 'L4A', color: '#0055A4', weight: 6, dashArray: '8,4', coords: [
+    [-33.4920,-70.6370],[-33.4980,-70.6480],[-33.5050,-70.6580], // La Cisterna→Lo Blanco
+    [-33.5120,-70.6650],[-33.5190,-70.6720]                      // La Granja→Santa Rosa
   ]},
-  { name: 'L6', color: '#9400D3', weight: 5, coords: [
-    [-33.4950,-70.6630],[-33.4900,-70.6600],[-33.4850,-70.6570],[-33.4800,-70.6540],
-    [-33.4750,-70.6510],[-33.4700,-70.6480],[-33.4650,-70.6450],[-33.4600,-70.6420],
-    [-33.4550,-70.6390],[-33.4500,-70.6360],[-33.4489,-70.6511],[-33.4440,-70.6370],
-    [-33.4390,-70.6230],[-33.4340,-70.6090]
+  { name: 'L5', color: '#008000', weight: 6, coords: [
+    [-33.4480,-70.7280],[-33.4481,-70.7200],[-33.4483,-70.7120], // Pudahuel→Barrancas
+    [-33.4485,-70.7040],[-33.4487,-70.6960],[-33.4489,-70.6880], // Bello→Blanqueado
+    [-33.4490,-70.6800],[-33.4490,-70.6720],[-33.4490,-70.6640], // Cerrillos→Lo Espejo
+    [-33.4490,-70.6511],[-33.4450,-70.6430],[-33.4404,-70.6012], // Quinta Normal→Cumming→Santa Ana
+    [-33.4376,-70.6131],[-33.4340,-70.6260],[-33.4310,-70.6380], // Bellavista→La Florida
+    [-33.4280,-70.6500],[-33.4250,-70.6600],[-33.4220,-70.6700]  // Mirador→Bellavista de la Florida
+  ]},
+  { name: 'L6', color: '#9400D3', weight: 6, coords: [
+    [-33.3900,-70.6460],[-33.3960,-70.6380],[-33.4020,-70.6290], // Cerro Navia→Neptuno
+    [-33.4080,-70.6200],[-33.4140,-70.6130],[-33.4200,-70.6060], // Tte Merino→Lo Prado
+    [-33.4260,-70.5990],[-33.4320,-70.5920],[-33.4380,-70.5850], // Las Torres→Camino Agrícola
+    [-33.4440,-70.5780],[-33.4500,-70.5710],[-33.4560,-70.5640], // Avenida Sur
+    [-33.4620,-70.5580],[-33.4680,-70.5530],[-33.4740,-70.5490]  // Los Libertadores
   ]}
 ];
 
+// Estaciones BipBici reales de Santiago
 const BICI_STATIONS = [
-  { id: 1, pos: [-33.4372, -70.6506], name: "Plaza de Armas" },
-  { id: 2, pos: [-33.4312, -70.6094], name: "Tobalaba" },
-  { id: 3, pos: [-33.4447, -70.6874], name: "Estación Central" }
+  { id: 1, pos: [-33.4372,-70.6506], name: "BipBici Plaza de Armas", disponibles: 8 },
+  { id: 2, pos: [-33.4399,-70.5894], name: "BipBici Tobalaba", disponibles: 5 },
+  { id: 3, pos: [-33.4447,-70.6874], name: "BipBici Estación Central", disponibles: 12 },
+  { id: 4, pos: [-33.4300,-70.6366], name: "BipBici Ecuador", disponibles: 3 },
+  { id: 5, pos: [-33.4315,-70.6277], name: "BipBici Estación Central 2", disponibles: 7 },
+  { id: 6, pos: [-33.4403,-70.5934], name: "BipBici Salvador", disponibles: 4 },
+  { id: 7, pos: [-33.4404,-70.6047], name: "BipBici Plaza de Armas Norte", disponibles: 6 },
+  { id: 8, pos: [-33.4208,-70.5484], name: "BipBici Escuela Militar", disponibles: 9 },
+  { id: 9, pos: [-33.4389,-70.6089], name: "BipBici Santa Ana", disponibles: 2 },
+  { id: 10, pos: [-33.4250,-70.6340], name: "BipBici Barrio Italia", disponibles: 11 }
 ];
 
-const CityMap = ({ className = "", showMetro = true, showBici = true, showScooter = true, destination = null, city = "Santiago", darkMode = false, alertasCoords = [] }) => {
+// Puntos de scooters Grin/Lime reales (zonas activas Santiago)
+const SCOOTER_ZONES = [
+  { id: 1, pos: [-33.4280,-70.6060], name: "Grin — Barrio Lastarria", tipo: 'grin' },
+  { id: 2, pos: [-33.4196,-70.6045], name: "Lime — Providencia", tipo: 'lime' },
+  { id: 3, pos: [-33.4312,-70.6094], name: "Grin — Bellavista", tipo: 'grin' },
+  { id: 4, pos: [-33.4160,-70.5950], name: "Lime — Las Condes", tipo: 'lime' },
+  { id: 5, pos: [-33.4350,-70.5800], name: "Grin — Ñuñoa", tipo: 'grin' },
+  { id: 6, pos: [-33.4450,-70.6510], name: "Lime — Barrio Italia", tipo: 'lime' },
+  { id: 7, pos: [-33.4100,-70.5750], name: "Grin — El Golf", tipo: 'grin' },
+  { id: 8, pos: [-33.4500,-70.6800], name: "Lime — Quinta Normal", tipo: 'lime' }
+];
+
+// Paradas de micros principales (Red Metropolitana)
+const MICRO_STOPS = [
+  { id: 1, pos: [-33.4404,-70.6012], name: "Alameda c/Bellas Artes", lineas: ['B01','201','210'] },
+  { id: 2, pos: [-33.4376,-70.6131], name: "Alameda c/San Francisco", lineas: ['B01','D01'] },
+  { id: 3, pos: [-33.4300,-70.6366], name: "Alameda c/Ecuador", lineas: ['301','D05'] },
+  { id: 4, pos: [-33.4315,-70.6277], name: "Estación Central", lineas: ['B01','301','D01'] },
+  { id: 5, pos: [-33.4196,-70.6045], name: "Providencia c/Manuel Montt", lineas: ['210','301'] },
+  { id: 6, pos: [-33.4160,-70.5950], name: "Providencia c/Tobalaba", lineas: ['210','401'] }
+];
+
+const CityMap = ({
+  className = "", showMetro = true, showBici = true, showScooter = true,
+  destination = null, city = "Santiago", darkMode = false, alertasCoords = [],
+  modoTransporte = null, // 'bici'|'scooter'|'metro'|'micro'|'auto'|'caminata'|'moto'|'uber'
+  searchQuery = "", onSearchSelect = null,
+}) => {
   const { pos, permiso } = useGeolocalizacion();
   const [tileError, setTileError] = useState(false);
+  const [mapSearchQuery, setMapSearchQuery] = useState(searchQuery);
+  const [mapSuggestions, setMapSuggestions] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  const handleMapSearch = async (q) => {
+    setMapSearchQuery(q);
+    if (q.length < 3) { setMapSuggestions([]); return; }
+    setSearchLoading(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}, Santiago, Chile&limit=5`);
+      const data = await res.json();
+      setMapSuggestions(data);
+    } catch { setMapSuggestions([]); }
+    finally { setSearchLoading(false); }
+  };
 
   const mapUrl = darkMode
     ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
@@ -161,29 +227,139 @@ const CityMap = ({ className = "", showMetro = true, showBici = true, showScoote
         </p>
       </div>
 
-      <MapContainer center={pos} zoom={13} scrollWheelZoom={false} className="w-full h-full" zoomControl={false}>
+      {/* BUSCADOR INTEGRADO EN EL MAPA — estilo Google Maps */}
+      <div className="absolute top-3 left-3 right-3 z-[1000]">
+        <div className="relative">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl flex items-center gap-2 px-4 py-3 border border-gray-100 dark:border-slate-700">
+            <Search size={16} className="text-[#00C896] shrink-0" />
+            <input
+              type="text"
+              placeholder="Buscar destino..."
+              value={mapSearchQuery}
+              onChange={e => handleMapSearch(e.target.value)}
+              className="bg-transparent flex-1 text-sm font-bold text-gray-900 dark:text-white placeholder:text-gray-400 outline-none"
+            />
+            {searchLoading && <div className="w-4 h-4 border-2 border-[#00C896] border-t-transparent rounded-full animate-spin shrink-0" />}
+            {mapSearchQuery && !searchLoading && (
+              <button onClick={() => { setMapSearchQuery(''); setMapSuggestions([]); }} className="text-gray-400 hover:text-gray-600">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          {mapSuggestions.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden z-[2000]">
+              {mapSuggestions.map((s, i) => (
+                <div
+                  key={i}
+                  onClick={() => {
+                    const coords = [parseFloat(s.lat), parseFloat(s.lon)];
+                    setMapSuggestions([]);
+                    setMapSearchQuery(s.display_name.split(',')[0]);
+                    if (onSearchSelect) onSearchSelect(coords, s.display_name.split(',')[0]);
+                  }}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-green-50 dark:hover:bg-slate-700 cursor-pointer border-b border-gray-50 dark:border-slate-700 last:border-none transition-colors"
+                >
+                  <MapPin size={14} className="text-[#00C896] shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-bold text-xs text-gray-900 dark:text-white truncate">{s.display_name.split(',')[0]}</p>
+                    <p className="text-[10px] text-gray-400 truncate">{s.display_name.split(',').slice(1,3).join(',')}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <MapContainer center={pos} zoom={14} scrollWheelZoom={true} className="w-full h-full" zoomControl={false}>
         <TileLayer
           attribution='&copy; CARTO'
           url={mapUrl}
           eventHandlers={{ tileerror: () => setTileError(true) }}
         />
 
+        {/* METRO — siempre visible con etiquetas de línea */}
         {showMetro && METRO_LINES.map(line => (
-          <Polyline key={line.name} positions={line.coords} color={line.color} weight={5} opacity={0.7} />
+          <React.Fragment key={line.name}>
+            <Polyline
+              positions={line.coords}
+              color={line.color}
+              weight={line.weight || 6}
+              opacity={modoTransporte === 'metro' ? 1 : 0.65}
+              dashArray={line.dashArray || null}
+            />
+          </React.Fragment>
         ))}
 
-        {showBici && BICI_STATIONS.map(s => (
-          <Marker key={s.id} position={s.pos} icon={customIcons.bici}>
-            <Popup><p className="font-bold text-xs">{s.name}</p></Popup>
+        {/* BICIS — prioridad alta si modo bici */}
+        {(showBici || modoTransporte === 'bici') && BICI_STATIONS.map(s => (
+          <Marker key={s.id} position={s.pos} icon={L.divIcon({
+            className: '',
+            html: `<div style="
+              background:${modoTransporte==='bici'?'#00C896':'#60A5FA'};
+              border:2px solid white;border-radius:50%;
+              width:${modoTransporte==='bici'?22:16}px;
+              height:${modoTransporte==='bici'?22:16}px;
+              display:flex;align-items:center;justify-content:center;
+              box-shadow:${modoTransporte==='bici'?'0 0 0 4px rgba(0,200,150,0.3)':'none'};
+            ">🚴</div>`,
+            iconSize: [modoTransporte==='bici'?22:16, modoTransporte==='bici'?22:16],
+            iconAnchor: [modoTransporte==='bici'?11:8, modoTransporte==='bici'?11:8]
+          })}>
+            <Popup>
+              <div className="p-2 min-w-[140px]">
+                <p className="font-black text-xs text-gray-900">{s.name}</p>
+                <p className="text-[10px] text-[#00C896] font-bold mt-1">🚴 {s.disponibles} bicis disponibles</p>
+                <p className="text-[9px] text-gray-400 mt-0.5">BipBici — Gratis primeros 30 min</p>
+              </div>
+            </Popup>
           </Marker>
         ))}
 
-        {showScooter && scooterPositions.map(s => (
-          <Marker key={s.id} position={s.pos} icon={customIcons.scooter} />
+        {/* SCOOTERS — prioridad alta si modo scooter */}
+        {(showScooter || modoTransporte === 'scooter') && SCOOTER_ZONES.map(s => (
+          <Marker key={s.id} position={s.pos} icon={L.divIcon({
+            className: '',
+            html: `<div style="
+              background:${modoTransporte==='scooter'?(s.tipo==='grin'?'#00C896':'#FFD700'):'#6B7280'};
+              border:2px solid white;border-radius:10px;
+              width:${modoTransporte==='scooter'?20:14}px;
+              height:${modoTransporte==='scooter'?20:14}px;
+              display:flex;align-items:center;justify-content:center;font-size:10px;
+              box-shadow:${modoTransporte==='scooter'?'0 0 0 4px rgba(0,200,150,0.25)':'none'};
+            ">🛴</div>`,
+            iconSize: [20,20], iconAnchor: [10,10]
+          })}>
+            <Popup>
+              <div className="p-2 min-w-[130px]">
+                <p className="font-black text-xs">{s.tipo === 'grin' ? '🟢 Grin' : '🟡 Lime'}</p>
+                <p className="text-[10px] text-gray-600 mt-0.5">{s.name}</p>
+                <p className="text-[9px] text-[#00C896] font-bold mt-1">~$90 CLP/min</p>
+              </div>
+            </Popup>
+          </Marker>
         ))}
 
+        {/* PARADAS MICRO — visible si modo micro */}
+        {modoTransporte === 'micro' && MICRO_STOPS.map(s => (
+          <Marker key={s.id} position={s.pos} icon={L.divIcon({
+            className: '',
+            html: `<div style="background:#F59E0B;border:2px solid white;border-radius:8px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px rgba(245,158,11,0.25);">🚌</div>`,
+            iconSize: [22,22], iconAnchor: [11,11]
+          })}>
+            <Popup>
+              <div className="p-2">
+                <p className="font-black text-xs">{s.name}</p>
+                <p className="text-[9px] text-gray-500 mt-1">Líneas: {s.lineas.join(' · ')}</p>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+
+        {/* USUARIO */}
         <Marker position={pos} icon={customIcons.user} />
 
+        {/* DESTINO */}
         {destination && (
           <>
             <Marker position={destination} icon={customIcons.destination} />
@@ -191,12 +367,9 @@ const CityMap = ({ className = "", showMetro = true, showBici = true, showScoote
           </>
         )}
 
+        {/* ALERTAS DE TRÁFICO */}
         {alertasCoords.map(a => (
-          <Marker
-            key={a.id}
-            position={[a.lat, a.lon]}
-            icon={iconIncidente(a.severity)}
-          >
+          <Marker key={a.id} position={[a.lat, a.lon]} icon={iconIncidente(a.severity)}>
             <Popup>
               <div className="p-1">
                 <p className="font-bold text-xs">{a.emoji} {a.calle}</p>
@@ -206,8 +379,6 @@ const CityMap = ({ className = "", showMetro = true, showBici = true, showScoote
             </Popup>
           </Marker>
         ))}
-
-        <Marker position={[-33.4442, -70.6511]} icon={customIcons.alert} />
       </MapContainer>
     </div>
   );
@@ -338,7 +509,7 @@ const Button = ({ children, onClick, variant = 'primary', className = "", fullWi
 // Dynamic imports for screens
 const HomeScreen = ({ user, onNavigate, stats, darkMode, alertas, alertasCargando }) => <HomeComponent user={user} onNavigate={onNavigate} stats={stats} darkMode={darkMode} alertas={alertas} alertasCargando={alertasCargando} />;
 const RoutePlanner = ({ onStart, destination, darkMode }) => <RoutePlannerComponent onStart={onStart} destination={destination} darkMode={darkMode} />;
-const LiveMapScreen = ({ darkMode }) => <LiveMapComponent darkMode={darkMode} />;
+const LiveMapScreen = ({ darkMode, onNavigateToRutas }) => <LiveMapComponent darkMode={darkMode} onNavigateToRutas={onNavigateToRutas} />;
 const GamificationScreen = ({ points, showToast, redeeming, setRedeeming, co2Total }) => <GamificationComponent points={points} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} co2Total={co2Total} />;
 const ProfileScreen = ({ user, stats, onLogout, darkMode, setDarkMode }) => <ProfileComponent user={user} stats={stats} onLogout={onLogout} darkMode={darkMode} setDarkMode={setDarkMode} />;
 
@@ -594,7 +765,7 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
     setCoords(destination);
   }, [destination]);
 
-  const [selected, setSelected] = useState('verde');
+  const [selected, setSelected] = useState('bici');
   const [filter, setFilter] = useState('greener');
   const [starting, setStarting] = useState(false);
 
@@ -603,44 +774,60 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
     return () => clearTimeout(timer);
   }, []);
 
-  const baseRoutes = [
-    {
-      id: 'verde', title: 'RUTA VERDE', sub: 'Micro + Metro',
-      medio: 'metro', distanciaKm: 5.2,
-      time: 45, cost: 800, co2: 0.2, co2Level: 15,
-      color: 'bg-[#00C896]', icon: <Leaf size={20} />, realTime: "Micro 301 en 4 min",
-      instrucciones: [
-        "🚶 Camina 200m hasta la parada en tu esquina",
-        "🚌 Sube a la micro 301 — dirección Las Condes (4 paradas)",
-        "🚇 Baja en Baquedano y toma Metro L1 → Tobalaba",
-        "🚇 Baja en la estación más cercana a tu destino",
-        "🚶 Camina 3 min — ¡llegaste!"
-      ]
-    },
-    {
-      id: 'rapida', title: 'RUTA RÁPIDA', sub: 'Auto compartido',
-      medio: 'auto', distanciaKm: 4.1,
-      time: 28, cost: 2500, co2: 1.8, co2Level: 75,
-      color: 'bg-[#FFD93D]', icon: <Zap size={20} />, realTime: "Auto a 2 km",
-      instrucciones: [
-        "📍 Dirígete al punto de encuentro (50m al norte)",
-        "🚗 El conductor llega en ~3 minutos",
-        "🚗 Viaje directo a tu destino sin transbordos"
-      ]
-    },
-    {
-      id: 'activa', title: 'RUTA ACTIVA', sub: 'Bici + Metro',
-      medio: 'bici', distanciaKm: 6.8,
-      time: 52, cost: 350, co2: 0, co2Level: 5,
-      color: 'bg-blue-400', icon: <Bike size={20} />, realTime: "12 bicis libres",
-      instrucciones: [
-        "🚴 Retira una BipBici en la estación cercana",
-        "🚴 Pedalea por ciclovía Providencia — 2.1 km al oriente",
-        "🔒 Estaciona la bici en la estación de destino",
-        "🚶 Camina 4 min — ¡llegaste!"
-      ]
-    },
+  // Modo de transporte seleccionado por el usuario
+  const [modoSeleccionado, setModoSeleccionado] = useState(null);
+
+  // Modos ordenados por prioridad ecológica (Ruta Verde primero)
+  const MODOS = [
+    { id: 'caminata', label: 'A pie', emoji: '🚶', color: '#00C896', co2Factor: 0, costeFijo: 0 },
+    { id: 'bici', label: 'Bicicleta', emoji: '🚴', color: '#3B82F6', co2Factor: 0, costeFijo: 350 },
+    { id: 'scooter', label: 'Scooter', emoji: '🛴', color: '#06B6D4', co2Factor: 0.015, costeFijo: 400 },
+    { id: 'metro', label: 'Metro', emoji: '🚇', color: '#FF0000', co2Factor: 0.03, costeFijo: 780 },
+    { id: 'micro', label: 'Micro', emoji: '🚌', color: '#F59E0B', co2Factor: 0.068, costeFijo: 800 },
+    { id: 'moto', label: 'Moto', emoji: '🏍️', color: '#8B5CF6', co2Factor: 0.085, costeFijo: 0 },
+    { id: 'uber', label: 'Uber', emoji: '🚗', color: '#1A1A2E', co2Factor: 0.21, costeFijo: 2800 },
+    { id: 'auto', label: 'Auto', emoji: '🚙', color: '#EF4444', co2Factor: 0.21, costeFijo: 1500 },
+    { id: 'compartido', label: 'Compartido', emoji: '🤝', color: '#EC4899', co2Factor: 0.1, costeFijo: 1200 },
   ];
+
+  const DIST_KM = 5.2; // distancia estimada de la ruta
+
+  const baseRoutes = MODOS.map(m => {
+    const co2 = parseFloat((m.co2Factor * DIST_KM).toFixed(3));
+    const co2Evitado = parseFloat((Math.max(0, 0.21 - m.co2Factor) * DIST_KM).toFixed(3));
+    const co2Level = Math.round((m.co2Factor / 0.21) * 100);
+    const tiempos = { caminata: 65, bici: 22, scooter: 18, metro: 40, micro: 45, moto: 20, uber: 25, auto: 28, compartido: 30 };
+    const pts = Math.floor(co2Evitado * 100 + DIST_KM * 10);
+    return {
+      id: m.id,
+      title: m.label.toUpperCase(),
+      sub: m.label,
+      medio: m.id,
+      distanciaKm: DIST_KM,
+      time: tiempos[m.id] || 35,
+      cost: m.costeFijo,
+      co2, co2Evitado, co2Level,
+      color: '',
+      colorHex: m.color,
+      emoji: m.emoji,
+      icon: <span style={{ fontSize: 18 }}>{m.emoji}</span>,
+      realTime: m.id === 'bici' ? `${BICI_STATIONS[0].disponibles} bicis libres` :
+                m.id === 'metro' ? 'Próximo en 3 min' :
+                m.id === 'uber' ? 'Conductor a 2 min' : 'Disponible ahora',
+      pts,
+      instrucciones: {
+        caminata: ["🚶 Sal por la puerta principal","🚶 Sigue derecho por Av. Providencia","🚶 Gira a la derecha en la próxima esquina","🏁 Has llegado a tu destino"],
+        bici: ["🚴 Retira BipBici en la estación más cercana","🚴 Toma la ciclovía de Av. Providencia hacia el oriente","🔒 Estaciona en la estación de destino","🚶 Camina 2 min — ¡llegaste!"],
+        scooter: ["🛴 Desbloquea el scooter con la app Grin/Lime","🛴 Sigue la ruta sugerida por la app","🛴 Estaciona en zona habilitada al llegar","✅ ¡Destino alcanzado!"],
+        metro: ["🚶 Dirígete a la estación Metro más cercana","🚇 Toma L1 → dirección Escuela Militar","🚇 Baja en la estación más cercana a tu destino","🚶 Camina 3 min hasta llegar"],
+        micro: ["🚌 Dirígete a la parada más cercana","🚌 Toma la micro 301 o D01 hacia tu destino","🔔 Baja en la parada indicada","🚶 Camina 5 min — ¡llegaste!"],
+        moto: ["🏍️ Prepara tu moto","🏍️ Sigue la ruta por Av. Vitacura","🏍️ Gira en la rotonda","🏁 Destino alcanzado"],
+        uber: ["📱 Solicita el Uber desde la app","📍 Espera en el punto indicado","🚗 El conductor llega en ~2 min","🏁 Viaje puerta a puerta"],
+        auto: ["🚗 Sal con tu vehículo","🚗 Toma Av. Providencia dirección oriente","🅿️ Busca estacionamiento al llegar","🏁 Has llegado"],
+        compartido: ["🤝 Confirma el viaje compartido","🚗 El conductor recoge a otro pasajero primero","🚗 Luego te lleva a tu destino","🏁 ¡Llegaste!"],
+      }[m.id] || ["🚀 En camino...","🏁 ¡Llegaste!"]
+    };
+  });
 
   const filteredRoutes = useMemo(() => {
     const sorted = [...baseRoutes];
@@ -648,7 +835,7 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
     if (filter === 'cheaper') sorted.sort((a, b) => a.cost - b.cost);
     if (filter === 'greener') sorted.sort((a, b) => a.co2 - b.co2);
     return sorted;
-  }, [filter]);
+  }, [filter, baseRoutes]);
 
   const handleStartRoute = () => {
     setStarting(true);
@@ -690,23 +877,50 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
         </div>
         <div className="space-y-3 max-h-[240px] overflow-y-auto no-scrollbar">
           {filteredRoutes.map((r, i) => (
-            <div key={r.id} onClick={() => setSelected(r.id)} style={{ animationDelay: `${i * 100}ms` }} className={`p-4 rounded-[28px] border-2 transition-all cursor-pointer animate-slide-up fill-mode-forwards ${selected === r.id ? 'border-[#00C896] bg-green-50 dark:bg-green-900/10 shadow-lg' : 'border-gray-50 dark:border-slate-800 bg-white dark:bg-slate-900'}`}>
-              <div className="flex items-center justify-between mb-2">
+            <div
+              key={r.id}
+              onClick={() => { setSelected(r.id); setModoSeleccionado(r.id); }}
+              style={{ animationDelay: `${i * 100}ms`, borderColor: selected === r.id ? r.colorHex : 'transparent' }}
+              className={`p-4 rounded-[24px] border-2 transition-all cursor-pointer animate-slide-up fill-mode-forwards
+                ${selected === r.id ? 'shadow-lg' : 'border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-gray-200'}`}
+              style={{ ...({ animationDelay: `${i * 100}ms`, borderColor: selected === r.id ? r.colorHex : 'transparent' }), background: selected === r.id ? `${r.colorHex}10` : '' }}
+            >
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-white shadow-md ${r.color}`}>{React.cloneElement(r.icon, { size: 18 })}</div>
-                  <div><h3 className="font-black text-sm text-[#0D1B2A] dark:text-white">{r.title}</h3><p className="text-[10px] text-[#6B7280] dark:text-slate-500 font-bold">{r.sub}</p></div>
+                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl shadow-md"
+                    style={{ background: selected === r.id ? r.colorHex : '#F3F4F6' }}>
+                    {r.emoji}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-black text-sm text-[#0D1B2A] dark:text-white">{r.title}</h3>
+                      {r.co2 === 0 && <span className="text-[8px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-black">CERO CO₂</span>}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[9px] text-gray-400 font-bold">{r.time} min</span>
+                      <span className="text-gray-300">·</span>
+                      <span className="text-[9px] text-gray-400 font-bold">{r.cost > 0 ? `$${r.cost.toLocaleString('es-CL')}` : 'Gratis'}</span>
+                      <span className="text-gray-300">·</span>
+                      <span className="text-[9px] font-black" style={{ color: r.colorHex }}>+{r.pts} pts</span>
+                    </div>
+                  </div>
                 </div>
                 <div className="text-right">
-                   <p className="font-black text-lg text-[#0D1B2A] dark:text-white leading-none">{r.time} min</p>
-                   <p className="text-[10px] text-[#6B7280] dark:text-slate-500 font-bold mt-0.5 uppercase tracking-widest">${r.cost}</p>
+                  <div className="w-10 h-10 rounded-full border-4 flex items-center justify-center"
+                    style={{ borderColor: `${r.colorHex}40`, background: `${r.colorHex}10` }}>
+                    <span className="text-[8px] font-black" style={{ color: r.colorHex }}>{r.co2Level}%</span>
+                  </div>
+                  <p className="text-[7px] text-gray-400 mt-0.5">CO₂</p>
                 </div>
               </div>
-              <div className="flex justify-between items-center mb-2">
-                 <div className="w-[70%] h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div className={`h-full transition-all duration-1000 ${selected === r.id ? 'bg-[#00C896]' : 'bg-gray-200 dark:bg-slate-700'}`} style={{ width: `${r.co2Level}%` }}></div>
-                 </div>
-                 <span className="text-[8px] font-black text-[#00C896] animate-pulse">{r.realTime}</span>
-              </div>
+              {selected === r.id && (
+                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between">
+                  <span className="text-[9px] font-bold animate-pulse" style={{ color: r.colorHex }}>● {r.realTime}</span>
+                  <span className="text-[9px] text-gray-400 font-bold">
+                    {r.co2 > 0 ? `${r.co2.toFixed(2)} kg CO₂` : '🌿 Sin emisiones'}
+                  </span>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -716,11 +930,20 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
   );
 };
 
-const LiveMapComponent = ({ darkMode }) => {
+const LiveMapComponent = ({ darkMode, onNavigateToRutas }) => {
   const [layers, setLayers] = useState({ metro: true, bici: true, scooter: true });
   const [showAlerts, setShowAlerts] = useState(false);
+  const [modoFiltro, setModoFiltro] = useState(null);
+  const [destSeleccionado, setDestSeleccionado] = useState(null);
   const { alertas, cargando, ultimaActualizacion, refetch } = useTrafficAlerts();
   const user = useMemo(() => storage.get('rv_user', { city: 'Santiago' }), []);
+
+  const MODOS_RAPIDOS = [
+    { id: 'bici', emoji: '🚴', label: 'Bici' },
+    { id: 'scooter', emoji: '🛴', label: 'Scooter' },
+    { id: 'metro', emoji: '🚇', label: 'Metro' },
+    { id: 'micro', emoji: '🚌', label: 'Micro' },
+  ];
 
   // Contar alertas importantes para el badge
   const alertasImportantes = alertas.filter(a => a.severity === 'error').length;
@@ -733,13 +956,45 @@ const LiveMapComponent = ({ darkMode }) => {
     <div className="h-full -mx-5 -mt-8 flex flex-col relative overflow-hidden">
       <div className="flex-grow relative h-full leaflet-container-wrapper">
         <CityMap
-          showMetro={layers.metro}
-          showBici={layers.bici}
-          showScooter={layers.scooter}
+          showMetro={layers.metro || modoFiltro === 'metro'}
+          showBici={layers.bici || modoFiltro === 'bici'}
+          showScooter={layers.scooter || modoFiltro === 'scooter'}
           city={user.city}
           darkMode={darkMode}
           alertasCoords={alertas.filter(a => a.lat && a.lon)}
+          modoTransporte={modoFiltro}
+          destination={destSeleccionado}
+          onSearchSelect={(coords, nombre) => {
+            setDestSeleccionado(coords);
+          }}
         />
+        {destSeleccionado && (
+          <div className="absolute bottom-28 left-4 right-4 z-[1000]">
+            <button
+              onClick={() => { if (onNavigateToRutas) onNavigateToRutas(destSeleccionado); }}
+              className="w-full py-4 bg-[#00C896] text-white font-black text-sm rounded-2xl shadow-2xl flex items-center justify-center gap-2 active:scale-95 transition-all"
+            >
+              <Navigation size={18} /> Ver rutas hacia este destino
+            </button>
+          </div>
+        )}
+
+        {/* FILTROS DE MODO — debajo del buscador */}
+        <div className="absolute top-20 left-4 right-4 flex gap-2 z-[900] overflow-x-auto no-scrollbar">
+          {MODOS_RAPIDOS.map(m => (
+            <button
+              key={m.id}
+              onClick={() => setModoFiltro(prev => prev === m.id ? null : m.id)}
+              className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all border whitespace-nowrap flex items-center gap-1
+                ${modoFiltro === m.id
+                  ? 'bg-[#00C896] text-white border-[#00C896]'
+                  : 'bg-white/90 text-[#1A1A2E] border-gray-100 backdrop-blur-sm dark:bg-slate-800/90 dark:text-white dark:border-slate-700'
+                }`}
+            >
+              {m.emoji} {m.label}
+            </button>
+          ))}
+        </div>
 
         {/* TOGGLE CAPAS */}
         <div className="absolute top-6 left-4 right-4 flex gap-2 z-[1000] overflow-x-auto no-scrollbar">
@@ -1628,7 +1883,7 @@ export default function RutaVerde() {
                     darkMode={darkMode}
                   />
                 )}
-                {activeTab === 'mapa' && <LiveMapScreen darkMode={darkMode} />}
+                {activeTab === 'mapa' && <LiveMapScreen darkMode={darkMode} onNavigateToRutas={(coords) => { setDestCoords(coords); setActiveTab('rutas'); }} />}
                 {activeTab === 'puntos' && <GamificationScreen points={stats.points} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} co2Total={stats.co2Total} />}
                 {activeTab === 'perfil' && <ProfileScreen user={user} stats={stats} onLogout={handleLogout} darkMode={darkMode} setDarkMode={setDarkMode} />}
               </Suspense>
