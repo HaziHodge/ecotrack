@@ -69,14 +69,21 @@ const BICI_STATIONS = [
   { id: 3, pos: [-33.4447, -70.6874], name: "Estación Central" }
 ];
 
-const CityMap = ({ className = "", showMetro = true, showBici = true, showScooter = true, destination = null, city = "Santiago" }) => {
-  const isDark = document.documentElement.classList.contains('dark');
+const CityMap = ({ className = "", showMetro = true, showBici = true, showScooter = true, destination = null, city = "Santiago", darkMode = false }) => {
   const { pos, permiso } = useGeolocalizacion();
   const [tileError, setTileError] = useState(false);
 
-  const mapUrl = isDark
+  const mapUrl = darkMode
     ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
     : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
+  const scooterPositions = useMemo(() => Array.from({ length: 8 }).map((_, i) => ({
+    id: i,
+    pos: [
+      pos[0] + (Math.random() - 0.5) * 0.04,
+      pos[1] + (Math.random() - 0.5) * 0.04
+    ]
+  })), [pos]);
 
   const RecenterMap = ({ coords }) => {
     const map = useMap();
@@ -127,8 +134,8 @@ const CityMap = ({ className = "", showMetro = true, showBici = true, showScoote
           </Marker>
         ))}
 
-        {showScooter && Array.from({ length: 10 }).map((_, i) => (
-          <Marker key={i} position={[pos[0] + (Math.random()-0.5)*0.05, pos[1] + (Math.random()-0.5)*0.05]} icon={customIcons.scooter} />
+        {showScooter && scooterPositions.map(s => (
+          <Marker key={s.id} position={s.pos} icon={customIcons.scooter} />
         ))}
 
         <Marker position={pos} icon={customIcons.user} />
@@ -269,15 +276,35 @@ const Button = ({ children, onClick, variant = 'primary', className = "", fullWi
 };
 
 // Dynamic imports for screens
-const HomeScreen = ({ user, onNavigate, stats }) => <HomeComponent user={user} onNavigate={onNavigate} stats={stats} />;
-const RoutePlanner = ({ onStart, destination }) => <RoutePlannerComponent onStart={onStart} destination={destination} />;
-const LiveMapScreen = () => <LiveMapComponent />;
-const GamificationScreen = ({ points, showToast, redeeming, setRedeeming }) => <GamificationComponent points={points} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} />;
+const HomeScreen = ({ user, onNavigate, stats, darkMode }) => <HomeComponent user={user} onNavigate={onNavigate} stats={stats} darkMode={darkMode} />;
+const RoutePlanner = ({ onStart, destination, darkMode }) => <RoutePlannerComponent onStart={onStart} destination={destination} darkMode={darkMode} />;
+const LiveMapScreen = ({ darkMode }) => <LiveMapComponent darkMode={darkMode} />;
+const GamificationScreen = ({ points, showToast, redeeming, setRedeeming, co2Total }) => <GamificationComponent points={points} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} co2Total={co2Total} />;
 const ProfileScreen = ({ user, stats, onLogout, darkMode, setDarkMode }) => <ProfileComponent user={user} stats={stats} onLogout={onLogout} darkMode={darkMode} setDarkMode={setDarkMode} />;
 
 // --- PANTALLAS ---
 
-const HomeComponent = ({ user, onNavigate, stats }) => {
+const HomeComponent = ({ user, onNavigate, stats, darkMode }) => {
+  const ALERTAS_DEMO = [
+    "🚧 Obras en Av. Providencia entre Bustamante y Pedro de Valdivia",
+    "🚇 Metro L1: operación normal esta mañana",
+    "🚌 Micro 301 con 5 min de retraso dirección Las Condes",
+    "✅ Corredor Alameda sin incidentes reportados",
+    "🌧️ Lluvia ligera prevista. Recuerda llevar impermeable 🧥"
+  ];
+  const alertaHoy = useMemo(() =>
+    ALERTAS_DEMO[new Date().getDay() % ALERTAS_DEMO.length], []);
+
+  const getMensaje = (nombre) => {
+    const h = new Date().getHours();
+    if (h < 9) return `Buenos días, ${nombre}. ¿Vamos en metro hoy? 🚇`;
+    if (h < 14) return `¡Buen día! Cada viaje sostenible cuenta, ${nombre}. 🌿`;
+    if (h < 19) return `¿Vuelta a casa en bici, ${nombre}? 🚴`;
+    return `Terminaste el día con ${stats.co2Total.toFixed(1)}kg menos de CO₂. ¡Bien! 🌱`;
+  };
+
+  const usuariosSimulados = 47 + (Math.floor(Date.now() / 86400000) % 30);
+
   const [from, setFrom] = useState("Tu ubicación");
   const [search, setSearch] = useState("");
   const [suggestions, setSuggestions] = useState([]);
@@ -328,7 +355,10 @@ const HomeComponent = ({ user, onNavigate, stats }) => {
       <header className="flex justify-between items-start" onClick={handleRefresh}>
         <div className="max-w-[70%]">
           <h1 className="text-3xl font-black text-[#0D1B2A] dark:text-white leading-tight tracking-tight">Hola, {user.name} 👋</h1>
-          <p className="text-[#4B5563] dark:text-slate-400 flex items-center gap-1 font-bold mt-1"><MapPin size={14} className="text-[#00C896]" /> {user.city}, Chile</p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-[#4B5563] dark:text-slate-400 flex items-center gap-1 font-bold"><MapPin size={14} className="text-[#00C896]" /> {user.city}, Chile</p>
+            <span className="bg-[#00C896]/10 text-[#00C896] text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">{usuariosSimulados} activos</span>
+          </div>
         </div>
         <button className="relative w-14 h-14 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-xl border border-gray-50 dark:border-slate-700 transition-transform hover:scale-110 active:scale-95">
           <Bell size={24} className="text-[#1A1A2E] dark:text-white" />
@@ -397,7 +427,7 @@ const HomeComponent = ({ user, onNavigate, stats }) => {
         ))}
       </div>
 
-      <h2 className="text-xl font-black text-[#0D1B2A] dark:text-white tracking-tight">Tu impacto hoy <Leaf className="inline text-[#00C896] ml-1 animate-leaf-swing" size={20} /></h2>
+      <h2 className="text-xl font-black text-[#0D1B2A] dark:text-white tracking-tight">{getMensaje(user.name.split(' ')[0])}</h2>
 
       <div className="bg-[#00C896]/10 p-3 rounded-2xl flex items-center gap-2 border border-[#00C896]/20">
          <div className="w-8 h-8 bg-[#00C896] rounded-full flex items-center justify-center text-white shrink-0 shadow-lg shadow-green-500/20">
@@ -428,25 +458,25 @@ const HomeComponent = ({ user, onNavigate, stats }) => {
 
       <div className="bg-[#FF6B6B]/10 dark:bg-red-900/20 border border-[#FF6B6B]/20 p-4 rounded-2xl flex items-center gap-4 animate-pulse">
         <div className="w-10 h-10 bg-[#FF6B6B] rounded-xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-red-500/20"><AlertTriangle size={20} /></div>
-        <p className="text-xs font-bold text-[#FF6B6B] leading-tight">Corte de tránsito en Av. Providencia por trabajos en la vía.</p>
+        <p className="text-xs font-bold text-[#FF6B6B] leading-tight">{alertaHoy}</p>
       </div>
 
-      {/* Banner Publicitario Premium (Monetización) */}
+      {/* Banner Institucional BipBici (Monetización) */}
       <div
-        onClick={() => trackEvent('Ad', 'click', 'scooter_promo')}
-        className="relative p-6 rounded-3xl overflow-hidden cursor-pointer group bg-gradient-to-r from-emerald-600 to-[#00C896] text-white shadow-xl shadow-green-500/20"
+        onClick={() => trackEvent('Ad', 'click', 'bipbici_promo')}
+        className="relative p-6 rounded-3xl overflow-hidden cursor-pointer bg-gradient-to-r from-[#1A1A2E] to-[#16213E] text-white shadow-xl border border-[#00C896]/20"
       >
          <div className="relative z-10 flex items-center justify-between">
             <div className="max-w-[70%]">
-               <span className="bg-white/20 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest">Patrocinado</span>
-               <h3 className="text-lg font-black mt-1 leading-tight">Muévete en Scooter</h3>
-               <p className="text-[10px] font-bold opacity-90 mt-1">Usa el código VERDE24 y obtén 15 min gratis.</p>
+               <span className="bg-[#00C896]/20 border border-[#00C896]/30 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest text-[#00C896]">Partner Movilidad</span>
+               <h3 className="text-lg font-black mt-1 leading-tight">BipBici + Ruta Verde</h3>
+               <p className="text-[10px] font-bold opacity-70 mt-1">Estaciones de bicicleta integradas en tu ruta sostenible.</p>
             </div>
-            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md group-hover:scale-110 transition-transform">
-               <Zap size={28} className="text-yellow-300" />
+            <div className="w-14 h-14 bg-[#00C896]/10 rounded-2xl flex items-center justify-center border border-[#00C896]/20">
+               <Bike size={28} className="text-[#00C896]" />
             </div>
          </div>
-         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-12 translate-x-12 blur-2xl"></div>
+         <div className="absolute top-0 right-0 w-32 h-32 bg-[#00C896]/5 rounded-full -translate-y-12 translate-x-12 blur-2xl"></div>
       </div>
 
       <div className="space-y-4">
@@ -468,7 +498,7 @@ const HomeComponent = ({ user, onNavigate, stats }) => {
   );
 };
 
-const RoutePlannerComponent = ({ onStart, destination }) => {
+const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
   const [loading, setLoading] = useState(true);
   const [coords, setCoords] = useState(destination);
 
@@ -526,7 +556,7 @@ const RoutePlannerComponent = ({ onStart, destination }) => {
   return (
     <div className="h-full flex flex-col -mx-5 -mt-8 pb-32 animate-fade-in relative">
       <div className="flex-grow relative h-[40vh] min-h-[250px] leaflet-container-wrapper">
-        <CityMap destination={coords} />
+        <CityMap destination={coords} darkMode={darkMode} />
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-t-[48px] shadow-2xl p-6 z-10 space-y-4 -mt-12 relative pb-32 lg:pb-8 border-t border-gray-100 dark:border-slate-800">
@@ -564,7 +594,7 @@ const RoutePlannerComponent = ({ onStart, destination }) => {
   );
 };
 
-const LiveMapComponent = () => {
+const LiveMapComponent = ({ darkMode }) => {
   const [layers, setLayers] = useState({ metro: true, bici: true, scooter: true });
   const [showAlerts, setShowAlerts] = useState(false);
 
@@ -579,7 +609,7 @@ const LiveMapComponent = () => {
   return (
     <div className="h-full -mx-5 -mt-8 flex flex-col relative overflow-hidden">
       <div className="flex-grow relative h-full leaflet-container-wrapper">
-        <CityMap showMetro={layers.metro} showBici={layers.bici} showScooter={layers.scooter} city={user.city} />
+        <CityMap showMetro={layers.metro} showBici={layers.bici} showScooter={layers.scooter} city={user.city} darkMode={darkMode} />
 
         <div className="absolute top-6 left-6 right-6 flex gap-2 z-[1000] overflow-x-auto no-scrollbar">
           {Object.entries(layers).map(([key, val]) => (
@@ -615,7 +645,19 @@ const LiveMapComponent = () => {
   );
 };
 
-const GamificationComponent = ({ points, showToast, redeeming, setRedeeming }) => {
+const GamificationComponent = ({ points, showToast, redeeming, setRedeeming, co2Total }) => {
+  const UMBRALES = {
+    'Brote Verde': { min: 0, max: 5 },
+    'Ciclista Urbano': { min: 5, max: 20 },
+    'Guardián del Clima': { min: 20, max: 50 },
+    'Héroe Verde': { min: 50, max: 50 }
+  };
+  const currentBadge = metricas.obtenerInsignia(co2Total);
+  const rango = UMBRALES[currentBadge];
+  const porcentajeProgreso = currentBadge === 'Héroe Verde'
+    ? 100
+    : Math.round(((co2Total - rango.min) / (rango.max - rango.min)) * 100);
+
   const rewards = [
     { id: 1, title: 'Café gratis en Starbucks', cost: 500, icon: <Coffee />, color: 'bg-green-700' },
     { id: 2, title: '30 min Bici Pública gratis', cost: 200, icon: <Bike />, color: 'bg-[#00C896]' },
@@ -648,8 +690,6 @@ const GamificationComponent = ({ points, showToast, redeeming, setRedeeming }) =
     }
   };
 
-  const currentBadge = metricas.obtenerInsignia(points);
-
   return (
     <div className="space-y-8 pb-40 animate-fade-in pt-6">
       <div className="text-center">
@@ -659,9 +699,9 @@ const GamificationComponent = ({ points, showToast, redeeming, setRedeeming }) =
         <h2 className="text-3xl font-black text-[#0D1B2A] dark:text-white tracking-tight uppercase">{currentBadge}</h2>
         <div className="flex items-center gap-2 mt-2 justify-center">
           <div className="w-48 bg-gray-100 dark:bg-slate-800 h-3 rounded-full overflow-hidden">
-            <div className="bg-[#00C896] h-full w-[65%] rounded-full shadow-inner transition-all duration-1000"></div>
+            <div className="bg-[#00C896] h-full rounded-full shadow-inner transition-all duration-1000" style={{ width: `${porcentajeProgreso}%` }}></div>
           </div>
-          <span className="text-xs font-black text-[#6B7280] dark:text-slate-500">65%</span>
+          <span className="text-xs font-black text-[#6B7280] dark:text-slate-500">{porcentajeProgreso}%</span>
         </div>
       </div>
 
@@ -745,6 +785,15 @@ const ProfileComponent = ({ user, stats, onLogout, darkMode, setDarkMode }) => {
   const weeklyData = [12, 18, 15, 25, 30, 22, 28];
   const maxVal = Math.max(...weeklyData);
 
+  const [showShareCard, setShowShareCard] = useState(false);
+  const ahorroEstimado = Math.round(stats.rutasCount * 1200);
+
+  const diasUsandoApp = Math.max(1, stats.rutasCount);
+  const miHuellaDiaria = (stats.co2Total / diasUsandoApp).toFixed(2);
+  const promedioSantiago = 2.5;
+  const porcentajeTuya = Math.min(100, Math.round((parseFloat(miHuellaDiaria) / promedioSantiago) * 100));
+  const ahorroPerc = Math.max(0, Math.round((1 - parseFloat(miHuellaDiaria) / promedioSantiago) * 100));
+
   return (
     <div className="space-y-8 pb-40 animate-fade-in pt-8">
       <div className="flex flex-col items-center">
@@ -755,7 +804,7 @@ const ProfileComponent = ({ user, stats, onLogout, darkMode, setDarkMode }) => {
            </div>
         </div>
         <h2 className="mt-6 text-3xl font-black text-[#0D1B2A] dark:text-white tracking-tight">{user.name}</h2>
-        <p className="text-[#4B5563] dark:text-slate-400 font-black uppercase tracking-widest text-[10px]">{metricas.obtenerInsignia(stats.points)} • {user.city}</p>
+        <p className="text-[#4B5563] dark:text-slate-400 font-black uppercase tracking-widest text-[10px]">{metricas.obtenerInsignia(stats.co2Total)} • {user.city}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -772,7 +821,7 @@ const ProfileComponent = ({ user, stats, onLogout, darkMode, setDarkMode }) => {
             <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Distancia Bici</p>
          </Card>
          <Card className="text-center !p-4" delay={400}>
-            <p className="text-xl font-black text-emerald-600">${(stats.kmTotal * 800).toLocaleString()}</p>
+            <p className="text-xl font-black text-emerald-600">${ahorroEstimado.toLocaleString('es-CL')} CLP</p>
             <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Dinero Ahorrado</p>
          </Card>
       </div>
@@ -796,22 +845,47 @@ const ProfileComponent = ({ user, stats, onLogout, darkMode, setDarkMode }) => {
         <h2 className="text-xl font-black text-[#0D1B2A] dark:text-white tracking-tight">Mi huella vs Santiago</h2>
         <Card className="space-y-4">
            <div className="space-y-1.5">
-              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest"><span>Tú</span><span>0.8 kg/día</span></div>
+              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest"><span>Tú</span><span>{miHuellaDiaria} kg/día</span></div>
               <div className="w-full h-3 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                 <div className="h-full bg-[#00C896] rounded-full w-[30%]"></div>
+                 <div className="h-full bg-[#00C896] rounded-full" style={{ width: `${porcentajeTuya}%` }}></div>
               </div>
            </div>
            <div className="space-y-1.5">
-              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest"><span>Promedio Santiago</span><span>2.5 kg/día</span></div>
+              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest"><span>Promedio Santiago</span><span>{promedioSantiago} kg/día</span></div>
               <div className="w-full h-3 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                 <div className="h-full bg-gray-300 dark:bg-slate-600 rounded-full w-[85%]"></div>
+                 <div className="h-full bg-gray-300 dark:bg-slate-600 rounded-full w-[100%]"></div>
               </div>
            </div>
-           <p className="text-[10px] text-center font-bold text-gray-500 italic">"¡Estás un 68% por debajo del promedio!"</p>
+           <p className="text-[10px] text-center font-bold text-gray-500 italic">"¡Estás un {ahorroPerc}% por debajo del promedio de Santiago!"</p>
         </Card>
       </div>
 
+      {showShareCard && (
+        <div className="fixed inset-0 bg-black/80 z-[6000] flex flex-col items-center justify-center p-8"
+             onClick={() => setShowShareCard(false)}>
+          <div className="w-80 bg-gradient-to-br from-[#1A1A2E] to-[#0d2e1e] rounded-[40px] p-8 text-center border border-[#00C896]/20 shadow-2xl">
+            <div className="w-16 h-16 bg-[#00C896] rounded-[20px] flex items-center justify-center mx-auto mb-4">
+              <Leaf size={32} fill="white" className="text-white" />
+            </div>
+            <p className="text-[#00C896] font-black text-xs uppercase tracking-widest mb-2">Este mes ahorré</p>
+            <p className="text-6xl font-black text-white">{stats.co2Total.toFixed(1)}</p>
+            <p className="text-[#00C896] font-black text-sm">kg de CO₂</p>
+            <p className="text-gray-400 text-xs mt-2">{metricas.generarComparativaViral(stats.co2Total)}</p>
+            <div className="mt-6 pt-4 border-t border-white/10">
+              <p className="text-white font-black text-sm">{user.name}</p>
+              <p className="text-gray-500 text-[10px] uppercase tracking-widest">
+                {metricas.obtenerInsignia(stats.co2Total)} • rutaverde-zeta.vercel.app
+              </p>
+            </div>
+          </div>
+          <p className="text-white/40 text-xs mt-6">Toca para cerrar · Haz screenshot para compartir</p>
+        </div>
+      )}
+
       <div className="space-y-3">
+        <Button variant="outline" fullWidth onClick={() => setShowShareCard(true)} className="mb-4">
+          📸 Compartir mi impacto
+        </Button>
         <div className="flex items-center justify-between p-5 bg-white dark:bg-slate-900 rounded-[28px] border-2 border-gray-50 dark:border-slate-800 transition-all cursor-pointer shadow-sm hover:shadow-md" onClick={() => setDarkMode(!darkMode)}>
           <div className="flex items-center gap-4">
             <div className={`p-3 rounded-2xl ${darkMode ? 'bg-indigo-900 text-indigo-400' : 'bg-gray-50 text-gray-400'}`}><Smartphone size={20} /></div>
@@ -835,7 +909,7 @@ export default function RutaVerde() {
   const [onboardingStep, setOnboardingStep] = useState(1);
   const [user, setUser] = useState({ name: "", city: "Santiago" });
   const [activeTab, setActiveTab] = useState('inicio');
-  const [stats, setStats] = useState({ points: 1240, co2Total: 12.4, kmTotal: 42.0, rutasCount: 24 });
+  const [stats, setStats] = useState({ points: 0, co2Total: 0, kmTotal: 0, rutasCount: 0 });
   const [toast, setToast] = useState(null);
   const [darkMode, setDarkMode] = useState(false);
   const [logoClicks, setLogoClicks] = useState(0);
@@ -852,6 +926,7 @@ export default function RutaVerde() {
     const timer = setTimeout(() => setLoading(false), 2000);
     const savedUser = storage.get('rv_user');
     const savedStats = storage.get('rv_stats');
+    if (savedStats) setStats(savedStats);
     const savedDark = storage.get('rv_dark');
     if (savedUser && savedUser.name) {
       setUser(savedUser); setOnboardingComplete(true);
@@ -975,6 +1050,7 @@ export default function RutaVerde() {
                 onChange={(e) => setUser({...user, name: e.target.value})}
                 className="w-full p-6 bg-gray-50 dark:bg-slate-800 border-3 border-gray-100 dark:border-slate-700 rounded-[32px] focus:border-[#00C896] focus:bg-white dark:focus:bg-slate-700 outline-none font-black text-2xl transition-all dark:text-white"
             />
+            <p className="text-center text-[10px] font-bold text-gray-400">Únete a los {47 + (Math.floor(Date.now() / 86400000) % 30)} usuarios que ya cuidan Santiago 🌿</p>
             <div className="space-y-4">
               <Button fullWidth onClick={() => { storage.set('rv_user', user); setOnboardingComplete(true); }} disabled={!user.name} className="py-6 text-xl shadow-2xl">Comenzar Aventura</Button>
             </div>
@@ -1031,10 +1107,10 @@ export default function RutaVerde() {
               </div>
 
               <Suspense fallback={<div className="flex items-center justify-center h-full"><Skeleton className="w-full h-64" /></div>}>
-                {activeTab === 'inicio' && <HomeScreen user={user} onNavigate={handleNavigate} stats={stats} />}
-                {activeTab === 'rutas' && <RoutePlanner onStart={handleStartRoute} destination={destCoords} />}
-                {activeTab === 'mapa' && <LiveMapScreen />}
-                {activeTab === 'puntos' && <GamificationScreen points={stats.points} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} />}
+        {activeTab === 'inicio' && <HomeScreen user={user} onNavigate={handleNavigate} stats={stats} darkMode={darkMode} />}
+        {activeTab === 'rutas' && <RoutePlanner onStart={handleStartRoute} destination={destCoords} darkMode={darkMode} />}
+        {activeTab === 'mapa' && <LiveMapScreen darkMode={darkMode} />}
+        {activeTab === 'puntos' && <GamificationScreen points={stats.points} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} co2Total={stats.co2Total} />}
                 {activeTab === 'perfil' && <ProfileScreen user={user} stats={stats} onLogout={handleLogout} darkMode={darkMode} setDarkMode={setDarkMode} />}
               </Suspense>
             </main>
@@ -1060,7 +1136,7 @@ export default function RutaVerde() {
 
           <div className="hidden lg:block flex-grow bg-[#F0FFF8] dark:bg-slate-950 p-10 overflow-hidden relative">
             <div className="h-full rounded-[60px] overflow-hidden border-[16px] border-white dark:border-slate-800 shadow-2xl relative transition-colors duration-500 leaflet-container-wrapper">
-              <CityMap city={user.city} />
+              <CityMap city={user.city} darkMode={darkMode} />
             </div>
           </div>
         </div>
