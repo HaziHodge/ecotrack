@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, useMemo, Suspense, lazy, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import {
@@ -16,6 +16,7 @@ import { useGeolocalizacion } from './hooks/useGeolocalizacion';
 import * as metricas from './utils/metricas';
 import ErrorBoundary from './components/ErrorBoundary';
 import { trackEvent } from './utils/vitals';
+import { useTrafficAlerts } from './hooks/useTrafficAlerts';
 
 /**
  * RUTA VERDE - MVP de Movilidad Sustentable (Chile)
@@ -57,6 +58,20 @@ const customIcons = {
   })
 };
 
+const iconIncidente = (severity) => L.divIcon({
+  className: 'custom-div-icon',
+  html: `<div style="
+    width:24px; height:24px; border-radius:50%;
+    background:${severity === 'error' ? '#FF6B6B' : severity === 'warning' ? '#FFD93D' : '#00C896'};
+    border: 2px solid white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    display:flex; align-items:center; justify-content:center;
+    font-size:10px;
+  ">${severity === 'error' ? '⚠' : severity === 'warning' ? '~' : '✓'}</div>`,
+  iconSize: [24, 24],
+  iconAnchor: [12, 12]
+});
+
 const METRO_LINES = [
   { name: 'L1', color: '#f44336', coords: [[-33.4447, -70.6874], [-33.4442, -70.6511], [-33.4312, -70.6094], [-33.4144, -70.5815]] },
   { name: 'L2', color: '#ffeb3b', coords: [[-33.4012, -70.6434], [-33.4489, -70.6511], [-33.5012, -70.6588]] },
@@ -69,7 +84,7 @@ const BICI_STATIONS = [
   { id: 3, pos: [-33.4447, -70.6874], name: "Estación Central" }
 ];
 
-const CityMap = ({ className = "", showMetro = true, showBici = true, showScooter = true, destination = null, city = "Santiago", darkMode = false }) => {
+const CityMap = ({ className = "", showMetro = true, showBici = true, showScooter = true, destination = null, city = "Santiago", darkMode = false, alertasCoords = [] }) => {
   const { pos, permiso } = useGeolocalizacion();
   const [tileError, setTileError] = useState(false);
 
@@ -146,6 +161,22 @@ const CityMap = ({ className = "", showMetro = true, showBici = true, showScoote
             <RecenterMap coords={destination} />
           </>
         )}
+
+        {alertasCoords.map(a => (
+          <Marker
+            key={a.id}
+            position={[a.lat, a.lon]}
+            icon={iconIncidente(a.severity)}
+          >
+            <Popup>
+              <div className="p-1">
+                <p className="font-bold text-xs">{a.emoji} {a.calle}</p>
+                <p className="text-[10px] text-gray-600 mt-0.5">{a.texto}</p>
+                {a.delay && <p className="text-[9px] text-red-500 font-bold mt-1">+{a.delay} min</p>}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
 
         <Marker position={[-33.4442, -70.6511]} icon={customIcons.alert} />
       </MapContainer>
@@ -276,7 +307,7 @@ const Button = ({ children, onClick, variant = 'primary', className = "", fullWi
 };
 
 // Dynamic imports for screens
-const HomeScreen = ({ user, onNavigate, stats, darkMode }) => <HomeComponent user={user} onNavigate={onNavigate} stats={stats} darkMode={darkMode} />;
+const HomeScreen = ({ user, onNavigate, stats, darkMode, alertas, alertasCargando }) => <HomeComponent user={user} onNavigate={onNavigate} stats={stats} darkMode={darkMode} alertas={alertas} alertasCargando={alertasCargando} />;
 const RoutePlanner = ({ onStart, destination, darkMode }) => <RoutePlannerComponent onStart={onStart} destination={destination} darkMode={darkMode} />;
 const LiveMapScreen = ({ darkMode }) => <LiveMapComponent darkMode={darkMode} />;
 const GamificationScreen = ({ points, showToast, redeeming, setRedeeming, co2Total }) => <GamificationComponent points={points} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} co2Total={co2Total} />;
@@ -284,17 +315,7 @@ const ProfileScreen = ({ user, stats, onLogout, darkMode, setDarkMode }) => <Pro
 
 // --- PANTALLAS ---
 
-const HomeComponent = ({ user, onNavigate, stats, darkMode }) => {
-  const ALERTAS_DEMO = [
-    "🚧 Obras en Av. Providencia entre Bustamante y Pedro de Valdivia",
-    "🚇 Metro L1: operación normal esta mañana",
-    "🚌 Micro 301 con 5 min de retraso dirección Las Condes",
-    "✅ Corredor Alameda sin incidentes reportados",
-    "🌧️ Lluvia ligera prevista. Recuerda llevar impermeable 🧥"
-  ];
-  const alertaHoy = useMemo(() =>
-    ALERTAS_DEMO[new Date().getDay() % ALERTAS_DEMO.length], []);
-
+const HomeComponent = ({ user, onNavigate, stats, darkMode, alertas, alertasCargando }) => {
   const getMensaje = (nombre) => {
     const h = new Date().getHours();
     if (h < 9) return `Buenos días, ${nombre}. ¿Vamos en metro hoy? 🚇`;
@@ -344,6 +365,10 @@ const HomeComponent = ({ user, onNavigate, stats, darkMode }) => {
     }
     onNavigate('rutas', coords);
   };
+
+  const alertaPrincipal = alertas?.find(a => a.severity === 'error')
+    || alertas?.find(a => a.severity === 'warning')
+    || alertas?.[0];
 
   return (
     <div className={`space-y-6 pb-40 animate-fade-in transition-transform duration-300 relative ${refreshing ? 'translate-y-12' : ''}`}>
@@ -456,10 +481,44 @@ const HomeComponent = ({ user, onNavigate, stats, darkMode }) => {
         </Card>
       </div>
 
-      <div className="bg-[#FF6B6B]/10 dark:bg-red-900/20 border border-[#FF6B6B]/20 p-4 rounded-2xl flex items-center gap-4 animate-pulse">
-        <div className="w-10 h-10 bg-[#FF6B6B] rounded-xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-red-500/20"><AlertTriangle size={20} /></div>
-        <p className="text-xs font-bold text-[#FF6B6B] leading-tight">{alertaHoy}</p>
-      </div>
+      {alertaPrincipal && (
+        <div className={`p-4 rounded-2xl flex items-center gap-4 animate-pulse border
+          ${alertaPrincipal.severity === 'error'
+            ? 'bg-[#FF6B6B]/10 dark:bg-red-900/20 border-[#FF6B6B]/20'
+            : alertaPrincipal.severity === 'warning'
+            ? 'bg-yellow-500/10 dark:bg-yellow-900/20 border-yellow-500/20'
+            : 'bg-[#00C896]/10 dark:bg-green-900/20 border-[#00C896]/20'
+          }`}
+        >
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 shadow-lg
+            ${alertaPrincipal.severity === 'error' ? 'bg-[#FF6B6B] shadow-red-500/20'
+            : alertaPrincipal.severity === 'warning' ? 'bg-yellow-500 shadow-yellow-500/20'
+            : 'bg-[#00C896] shadow-green-500/20'}`}
+          >
+            <span className="text-lg">{alertaPrincipal.emoji}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className={`text-xs font-bold leading-tight
+              ${alertaPrincipal.severity === 'error' ? 'text-[#FF6B6B]'
+              : alertaPrincipal.severity === 'warning' ? 'text-yellow-600 dark:text-yellow-400'
+              : 'text-emerald-700 dark:text-emerald-400'}`}
+            >
+              {alertaPrincipal.calle && (
+                <span className="font-black">{alertaPrincipal.calle}: </span>
+              )}
+              {alertaPrincipal.texto}
+            </p>
+            {alertaPrincipal.delay && (
+              <p className="text-[9px] text-gray-400 font-bold mt-0.5">
+                Retraso estimado: {alertaPrincipal.delay} min
+              </p>
+            )}
+          </div>
+          {alertasCargando && (
+            <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin shrink-0" />
+          )}
+        </div>
+      )}
 
       {/* Banner Institucional BipBici (Monetización) */}
       <div
@@ -597,48 +656,150 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
 const LiveMapComponent = ({ darkMode }) => {
   const [layers, setLayers] = useState({ metro: true, bici: true, scooter: true });
   const [showAlerts, setShowAlerts] = useState(false);
-
-  const alerts = [
-    { id: 1, text: "🚧 Corte Av. Libertador Bernardo O'Higgins", status: "Importante" },
-    { id: 2, text: "🚌 Demora en corredor Alameda", status: "Retraso" },
-    { id: 3, text: "✅ Metro L1 funcionando normal", status: "OK" }
-  ];
-
+  const { alertas, cargando, ultimaActualizacion, refetch } = useTrafficAlerts();
   const user = useMemo(() => storage.get('rv_user', { city: 'Santiago' }), []);
+
+  // Contar alertas importantes para el badge
+  const alertasImportantes = alertas.filter(a => a.severity === 'error').length;
+
+  const horaActualizacion = ultimaActualizacion
+    ? ultimaActualizacion.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
+    : null;
 
   return (
     <div className="h-full -mx-5 -mt-8 flex flex-col relative overflow-hidden">
       <div className="flex-grow relative h-full leaflet-container-wrapper">
-        <CityMap showMetro={layers.metro} showBici={layers.bici} showScooter={layers.scooter} city={user.city} darkMode={darkMode} />
+        <CityMap
+          showMetro={layers.metro}
+          showBici={layers.bici}
+          showScooter={layers.scooter}
+          city={user.city}
+          darkMode={darkMode}
+          alertasCoords={alertas.filter(a => a.lat && a.lon)}
+        />
 
-        <div className="absolute top-6 left-6 right-6 flex gap-2 z-[1000] overflow-x-auto no-scrollbar">
+        {/* TOGGLE CAPAS */}
+        <div className="absolute top-6 left-4 right-4 flex gap-2 z-[1000] overflow-x-auto no-scrollbar">
           {Object.entries(layers).map(([key, val]) => (
-            <button key={key} onClick={() => setLayers({...layers, [key]: !val})} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all border ${val ? 'bg-[#1A1A2E] text-white border-[#1A1A2E]' : 'bg-white text-[#1A1A2E] border-gray-100 dark:bg-slate-800 dark:text-white dark:border-slate-700'}`}>
+            <button
+              key={key}
+              onClick={() => setLayers({ ...layers, [key]: !val })}
+              className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all border whitespace-nowrap
+                ${val
+                  ? 'bg-[#1A1A2E] text-white border-[#1A1A2E]'
+                  : 'bg-white text-[#1A1A2E] border-gray-100 dark:bg-slate-800 dark:text-white dark:border-slate-700'
+                }`}
+            >
               {key}
             </button>
           ))}
-          <button onClick={() => setShowAlerts(!showAlerts)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all border bg-red-500 text-white shrink-0`}>
-             {showAlerts ? 'Cerrar Alertas' : 'Alertas'}
+
+          {/* BOTÓN ALERTAS con badge de incidentes importantes */}
+          <button
+            onClick={() => setShowAlerts(!showAlerts)}
+            className="relative px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all border bg-red-500 text-white shrink-0"
+          >
+            {cargando ? '⏳' : '⚠️'} Alertas
+            {alertasImportantes > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white text-red-500 rounded-full text-[9px] font-black flex items-center justify-center border-2 border-red-500">
+                {alertasImportantes}
+              </span>
+            )}
           </button>
         </div>
 
-        <button className="absolute bottom-24 right-6 z-[1000] w-14 h-14 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-2xl border border-gray-100 dark:border-slate-700 text-[#00C896] hover:scale-110 active:scale-90 transition-all">
-           <Locate size={24} />
+        {/* BOTÓN CENTRAR */}
+        <button className="absolute bottom-24 right-4 z-[1000] w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-2xl border border-gray-100 dark:border-slate-700 text-[#00C896]">
+          <Locate size={22} />
         </button>
 
-        <div className={`absolute top-0 right-0 h-full w-72 bg-white dark:bg-slate-900 z-[2000] shadow-2xl transition-transform duration-500 border-l border-gray-100 dark:border-slate-800 p-6 space-y-6 ${showAlerts ? 'translate-x-0' : 'translate-x-full'}`}>
-           <div className="flex justify-between items-center">
-              <h3 className="font-black text-xl">Alertas en vivo</h3>
-              <button onClick={() => setShowAlerts(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-all"><X size={20} /></button>
-           </div>
-           <div className="space-y-4">
-              {alerts.map(a => (
-                <div key={a.id} className="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700">
-                   <p className="text-xs font-bold mb-1">{a.text}</p>
-                   <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${a.status === 'Importante' ? 'bg-red-100 text-red-600' : a.status === 'OK' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'}`}>{a.status}</span>
+        {/* PANEL DE ALERTAS — slide desde la derecha */}
+        <div className={`absolute top-0 right-0 h-full w-[85%] max-w-xs bg-white dark:bg-slate-900 z-[2000] shadow-2xl transition-transform duration-400 ease-out border-l border-gray-100 dark:border-slate-800 flex flex-col
+          ${showAlerts ? 'translate-x-0' : 'translate-x-full'}`}
+        >
+          {/* Header del panel */}
+          <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-slate-800 shrink-0">
+            <div>
+              <h3 className="font-black text-lg text-[#0D1B2A] dark:text-white">Alertas en vivo</h3>
+              {horaActualizacion && (
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                  Actualizado {horaActualizacion} · TomTom
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={refetch}
+                className="w-8 h-8 bg-gray-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-gray-500 hover:text-[#00C896] transition-colors"
+                title="Actualizar"
+              >
+                <TrendingUp size={14} />
+              </button>
+              <button
+                onClick={() => setShowAlerts(false)}
+                className="w-8 h-8 bg-gray-100 dark:bg-slate-800 rounded-xl flex items-center justify-center"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* Lista de alertas */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {cargando ? (
+              // Skeleton loader
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800 animate-pulse">
+                  <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded w-3/4 mb-2" />
+                  <div className="h-2 bg-gray-200 dark:bg-slate-700 rounded w-1/2" />
                 </div>
-              ))}
-           </div>
+              ))
+            ) : (
+              alertas.map((a) => (
+                <div
+                  key={a.id}
+                  className={`p-4 rounded-2xl border transition-all
+                    ${a.severity === 'error'
+                      ? 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800/30'
+                      : a.severity === 'warning'
+                      ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-100 dark:border-yellow-800/30'
+                      : 'bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-800/30'
+                    }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-xl shrink-0 mt-0.5">{a.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-[#0D1B2A] dark:text-white leading-snug truncate">
+                        {a.calle && <span className="text-[#00C896]">{a.calle}: </span>}
+                        {a.texto}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full
+                          ${a.status === 'Importante' ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
+                          : a.status === 'OK' ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400'
+                          : 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/40 dark:text-yellow-400'}`}
+                        >
+                          {a.status}
+                        </span>
+                        {a.delay && (
+                          <span className="text-[8px] font-bold text-gray-500">
+                            +{a.delay} min de retraso
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Footer con créditos */}
+          <div className="p-4 border-t border-gray-100 dark:border-slate-800 shrink-0">
+            <p className="text-[8px] font-bold text-gray-400 text-center uppercase tracking-widest">
+              Datos: TomTom Traffic™ · Se actualiza cada 2 min
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -917,6 +1078,9 @@ export default function RutaVerde() {
   const [redeeming, setRedeeming] = useState(null);
   const [destCoords, setDestCoords] = useState(null);
 
+  // Alertas de tráfico en tiempo real
+  const { alertas, cargando: alertasCargando } = useTrafficAlerts();
+
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -1107,10 +1271,10 @@ export default function RutaVerde() {
               </div>
 
               <Suspense fallback={<div className="flex items-center justify-center h-full"><Skeleton className="w-full h-64" /></div>}>
-        {activeTab === 'inicio' && <HomeScreen user={user} onNavigate={handleNavigate} stats={stats} darkMode={darkMode} />}
-        {activeTab === 'rutas' && <RoutePlanner onStart={handleStartRoute} destination={destCoords} darkMode={darkMode} />}
-        {activeTab === 'mapa' && <LiveMapScreen darkMode={darkMode} />}
-        {activeTab === 'puntos' && <GamificationScreen points={stats.points} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} co2Total={stats.co2Total} />}
+                {activeTab === 'inicio' && <HomeScreen user={user} onNavigate={handleNavigate} stats={stats} darkMode={darkMode} alertas={alertas} alertasCargando={alertasCargando} />}
+                {activeTab === 'rutas' && <RoutePlanner onStart={handleStartRoute} destination={destCoords} darkMode={darkMode} />}
+                {activeTab === 'mapa' && <LiveMapScreen darkMode={darkMode} />}
+                {activeTab === 'puntos' && <GamificationScreen points={stats.points} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} co2Total={stats.co2Total} />}
                 {activeTab === 'perfil' && <ProfileScreen user={user} stats={stats} onLogout={handleLogout} darkMode={darkMode} setDarkMode={setDarkMode} />}
               </Suspense>
             </main>
@@ -1136,7 +1300,7 @@ export default function RutaVerde() {
 
           <div className="hidden lg:block flex-grow bg-[#F0FFF8] dark:bg-slate-950 p-10 overflow-hidden relative">
             <div className="h-full rounded-[60px] overflow-hidden border-[16px] border-white dark:border-slate-800 shadow-2xl relative transition-colors duration-500 leaflet-container-wrapper">
-              <CityMap city={user.city} darkMode={darkMode} />
+              <CityMap city={user.city} darkMode={darkMode} alertasCoords={alertas.filter(a => a.lat && a.lon)} />
             </div>
           </div>
         </div>
