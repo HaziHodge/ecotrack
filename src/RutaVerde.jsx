@@ -575,9 +575,42 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
   }, []);
 
   const baseRoutes = [
-    { id: 'verde', title: 'RUTA VERDE', sub: 'Micro + Metro', time: 45, cost: 800, co2: 0.2, co2Level: 15, color: 'bg-[#00C896]', icon: <Leaf size={20} />, realTime: "Micro 301 en 4 min" },
-    { id: 'rapida', title: 'RUTA RÁPIDA', sub: 'Auto compartido', time: 28, cost: 2500, co2: 1.8, co2Level: 75, color: 'bg-[#FFD93D]', icon: <Zap size={20} />, realTime: "Auto a 2 km" },
-    { id: 'activa', title: 'RUTA ACTIVA', sub: 'Bici + Metro', time: 52, cost: 350, co2: 0, co2Level: 5, color: 'bg-blue-400', icon: <Bike size={20} />, realTime: "12 bicis libres" },
+    {
+      id: 'verde', title: 'RUTA VERDE', sub: 'Micro + Metro',
+      medio: 'metro', distanciaKm: 5.2,
+      time: 45, cost: 800, co2: 0.2, co2Level: 15,
+      color: 'bg-[#00C896]', icon: <Leaf size={20} />, realTime: "Micro 301 en 4 min",
+      instrucciones: [
+        "🚶 Camina 200m hasta la parada en Av. Vicuña Mackenna",
+        "🚌 Toma la micro 301 dirección Las Condes — 4 paradas",
+        "🚇 Baja en Baquedano y toma Metro L1 dirección Tobalaba",
+        "🚇 Baja en la estación más cercana a tu destino",
+        "🚶 Camina 3 min hasta llegar"
+      ]
+    },
+    {
+      id: 'rapida', title: 'RUTA RÁPIDA', sub: 'Auto compartido',
+      medio: 'auto', distanciaKm: 4.1,
+      time: 28, cost: 2500, co2: 1.8, co2Level: 75,
+      color: 'bg-[#FFD93D]', icon: <Zap size={20} />, realTime: "Auto a 2 km",
+      instrucciones: [
+        "📍 Dirígete al punto de encuentro indicado",
+        "🚗 El conductor llegará en ~3 minutos",
+        "🚗 El auto te llevará directo a tu destino"
+      ]
+    },
+    {
+      id: 'activa', title: 'RUTA ACTIVA', sub: 'Bici + Metro',
+      medio: 'bici', distanciaKm: 6.8,
+      time: 52, cost: 350, co2: 0, co2Level: 5,
+      color: 'bg-blue-400', icon: <Bike size={20} />, realTime: "12 bicis libres",
+      instrucciones: [
+        "🚴 Retira una BipBici en la estación cercana",
+        "🚴 Pedalea por la ciclovía de Av. Providencia — 2.1 km",
+        "🚇 Estaciona la bici y toma Metro L1 — 2 estaciones",
+        "🚶 Camina 4 min hasta tu destino"
+      ]
+    },
   ];
 
   const filteredRoutes = useMemo(() => {
@@ -591,10 +624,11 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
   const handleStartRoute = () => {
     setStarting(true);
     trackEvent('Navigation', 'start_route', selected);
+    const rutaElegida = filteredRoutes.find(r => r.id === selected);
     setTimeout(() => {
       setStarting(false);
-      onStart();
-    }, 1500);
+      onStart(rutaElegida); // pasar objeto completo
+    }, 800);
   };
 
   if (loading) {
@@ -1061,6 +1095,260 @@ const ProfileComponent = ({ user, stats, onLogout, darkMode, setDarkMode }) => {
   );
 };
 
+const NavegacionActivaScreen = ({ ruta, userPos, onFinalizar, onCancelar, darkMode }) => {
+  const [instruccionIdx, setInstruccionIdx] = useState(0);
+  const [tiempoRestante, setTiempoRestante] = useState(ruta.time);
+  const [distanciaRestante, setDistanciaRestante] = useState(ruta.distanciaKm);
+  const [posActual, setPosActual] = useState(userPos);
+  const [routePoints, setRoutePoints] = useState([]);
+  const [cargandoRuta, setCargandoRuta] = useState(true);
+  const [iniciado, setIniciado] = useState(Date.now());
+
+  // 1. Obtener ruta real con OSRM (gratuito, sin API key)
+  useEffect(() => {
+    const fetchRoute = async () => {
+      const origen = userPos;
+      const destino = ruta.destinoCoords || [userPos[0] + 0.025, userPos[1] + 0.032];
+      try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${origen[1]},${origen[0]};${destino[1]},${destino[0]}?overview=full&geometries=geojson`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+        const data = await res.json();
+        if (data.routes?.[0]) {
+          const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+          setRoutePoints(coords);
+        } else {
+          setRoutePoints(buildFallbackRoute(origen, destino));
+        }
+      } catch {
+        setRoutePoints(buildFallbackRoute(origen, destino));
+      } finally {
+        setCargandoRuta(false);
+      }
+    };
+    fetchRoute();
+  }, []);
+
+  // 2. GPS watchPosition — seguimiento real
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    const id = navigator.geolocation.watchPosition(
+      (pos) => setPosActual([pos.coords.latitude, pos.coords.longitude]),
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, []);
+
+  // 3. Countdown tiempo y distancia (cada 30s)
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setTiempoRestante(t => Math.max(0, t - 1));
+      setDistanciaRestante(d => Math.max(0, parseFloat((d - 0.05).toFixed(2))));
+    }, 30000);
+    return () => clearInterval(iv);
+  }, []);
+
+  // 4. Avanzar instrucciones automáticamente
+  useEffect(() => {
+    if (ruta.instrucciones.length <= 1) return;
+    const segPorPaso = (ruta.time * 60) / ruta.instrucciones.length;
+    const iv = setInterval(() => {
+      setInstruccionIdx(i => Math.min(i + 1, ruta.instrucciones.length - 1));
+    }, segPorPaso * 1000);
+    return () => clearInterval(iv);
+  }, [ruta]);
+
+  const esUltimoPaso = instruccionIdx === ruta.instrucciones.length - 1;
+  const progreso = Math.round(((ruta.distanciaKm - distanciaRestante) / ruta.distanciaKm) * 100);
+
+  const mapUrl = darkMode
+    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png';
+
+  const RecenterNav = ({ pos }) => {
+    const map = useMap();
+    useEffect(() => { map.setView(pos, 17, { animate: true }); }, [pos]);
+    return null;
+  };
+
+  const iconUsuarioNav = L.divIcon({
+    className: '',
+    html: `<div style="
+      width:20px;height:20px;
+      background:#3B82F6;
+      border:3px solid white;
+      border-radius:50%;
+      box-shadow:0 0 0 6px rgba(59,130,246,0.25);
+    "></div>`,
+    iconSize: [20, 20], iconAnchor: [10, 10]
+  });
+
+  return (
+    <div className="fixed inset-0 z-[3000] flex flex-col bg-[#1A1A2E]">
+
+      {/* BARRA SUPERIOR — instrucción actual */}
+      <div className="bg-[#1A1A2E] text-white px-5 pt-10 pb-4 z-10 shrink-0">
+        <div className="flex items-start gap-3 mb-3">
+          <div className="w-12 h-12 bg-[#00C896] rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-green-500/30">
+            <Navigation size={20} className="text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[9px] font-black uppercase tracking-widest text-[#00C896] mb-0.5">
+              Paso {instruccionIdx + 1} / {ruta.instrucciones.length}
+            </p>
+            <p className="font-black text-sm leading-snug text-white">
+              {ruta.instrucciones[instruccionIdx]}
+            </p>
+          </div>
+          <button
+            onClick={onCancelar}
+            className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center shrink-0 hover:bg-white/20 transition-all"
+          >
+            <X size={18} className="text-white" />
+          </button>
+        </div>
+
+        {/* Barra de progreso de pasos */}
+        <div className="flex gap-1">
+          {ruta.instrucciones.map((_, i) => (
+            <div
+              key={i}
+              className={`h-1 flex-1 rounded-full transition-all duration-700 ${
+                i < instruccionIdx ? 'bg-[#00C896]' :
+                i === instruccionIdx ? 'bg-white' : 'bg-white/20'
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* MAPA FULLSCREEN con la ruta dibujada */}
+      <div className="flex-1 relative min-h-0">
+        {cargandoRuta ? (
+          <div className="absolute inset-0 bg-slate-800 flex flex-col items-center justify-center gap-3">
+            <div className="w-10 h-10 border-4 border-[#00C896] border-t-transparent rounded-full animate-spin" />
+            <p className="text-white text-sm font-bold">Calculando tu ruta...</p>
+          </div>
+        ) : (
+          <MapContainer
+            center={posActual}
+            zoom={17}
+            scrollWheelZoom={false}
+            zoomControl={false}
+            className="w-full h-full"
+          >
+            <TileLayer url={mapUrl} attribution="© CARTO" />
+            <RecenterNav pos={posActual} />
+
+            {/* LÍNEA DE RUTA */}
+            {routePoints.length > 0 && (
+              <>
+                {/* Sombra de la línea */}
+                <Polyline positions={routePoints} color="#1A1A2E" weight={10} opacity={0.3} />
+                {/* Línea principal */}
+                <Polyline positions={routePoints} color="#00C896" weight={6} opacity={0.95} />
+              </>
+            )}
+
+            {/* POSICIÓN USUARIO */}
+            <Marker position={posActual} icon={iconUsuarioNav} />
+
+            {/* DESTINO */}
+            {routePoints.length > 0 && (
+              <Marker
+                position={routePoints[routePoints.length - 1]}
+                icon={customIcons.destination}
+              >
+                <Popup><p className="font-bold text-xs">Tu destino</p></Popup>
+              </Marker>
+            )}
+          </MapContainer>
+        )}
+
+        {/* Botón zoom in/out */}
+        <div className="absolute bottom-4 right-4 z-[1000] flex flex-col gap-2">
+          <button className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg text-[#1A1A2E] font-black text-lg">+</button>
+          <button className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg text-[#1A1A2E] font-black text-lg">−</button>
+        </div>
+      </div>
+
+      {/* PANEL INFERIOR — stats + botón finalizar */}
+      <div className="bg-white dark:bg-slate-900 rounded-t-[36px] px-5 pt-4 pb-8 shadow-2xl shrink-0">
+        <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+
+        {/* Stats en vivo */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="bg-gray-50 dark:bg-slate-800 rounded-2xl p-3 text-center">
+            <p className="text-xl font-black text-[#1A1A2E] dark:text-white leading-none">{tiempoRestante}</p>
+            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">min rest.</p>
+          </div>
+          <div className="bg-gray-50 dark:bg-slate-800 rounded-2xl p-3 text-center">
+            <p className="text-xl font-black text-[#00C896] leading-none">{distanciaRestante.toFixed(1)}</p>
+            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">km rest.</p>
+          </div>
+          <div className="bg-gray-50 dark:bg-slate-800 rounded-2xl p-3 text-center">
+            <p className="text-xl font-black text-[#FFD93D] leading-none">+{ruta.puntosNuevos}</p>
+            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">pts</p>
+          </div>
+        </div>
+
+        {/* Barra de progreso del viaje */}
+        <div className="mb-4">
+          <div className="flex justify-between text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
+            <span>Progreso</span>
+            <span>{progreso}%</span>
+          </div>
+          <div className="w-full h-2 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-[#00C896] to-emerald-400 rounded-full transition-all duration-1000"
+              style={{ width: `${Math.max(5, progreso)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Info de ruta activa */}
+        <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/10 rounded-2xl border border-[#00C896]/20 mb-4">
+          <div className="w-8 h-8 bg-[#00C896] rounded-xl flex items-center justify-center shrink-0">
+            <Leaf size={14} className="text-white" fill="white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-black text-xs text-[#0D1B2A] dark:text-white">{ruta.title} · {ruta.sub}</p>
+            <p className="text-[9px] text-[#00C896] font-bold">
+              Ahorrando {ruta.co2Evitado.toFixed(2)} kg CO₂ vs auto 🌿
+            </p>
+          </div>
+        </div>
+
+        {/* BOTÓN FINALIZAR — solo el usuario lo activa */}
+        <button
+          onClick={onFinalizar}
+          className={`w-full py-4 rounded-2xl font-black text-white text-sm flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl
+            ${esUltimoPaso
+              ? 'bg-gradient-to-r from-[#00C896] to-[#00A87E] shadow-green-500/30 animate-pulse'
+              : 'bg-[#1A1A2E]'
+            }`}
+        >
+          <CheckCircle2 size={20} />
+          {esUltimoPaso ? '¡Llegué! · Finalizar viaje 🎉' : 'Finalizar viaje anticipado'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Helper para ruta de fallback cuando OSRM no responde
+function buildFallbackRoute(origen, destino) {
+  const puntos = 12;
+  return Array.from({ length: puntos }).map((_, i) => {
+    const t = i / (puntos - 1);
+    const jitter = i > 0 && i < puntos - 1 ? (Math.random() - 0.5) * 0.002 : 0;
+    return [
+      origen[0] + (destino[0] - origen[0]) * t + jitter,
+      origen[1] + (destino[1] - origen[1]) * t + jitter
+    ];
+  });
+}
+
 // --- APP PRINCIPAL ---
 
 export default function RutaVerde() {
@@ -1077,6 +1365,10 @@ export default function RutaVerde() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [redeeming, setRedeeming] = useState(null);
   const [destCoords, setDestCoords] = useState(null);
+
+  const [navegacionActiva, setNavegacionActiva] = useState(false);
+  const [rutaActiva, setRutaActiva] = useState(null);
+  const { pos: userPos } = useGeolocalizacion();
 
   // Alertas de tráfico en tiempo real
   const { alertas, cargando: alertasCargando } = useTrafficAlerts();
@@ -1095,7 +1387,6 @@ export default function RutaVerde() {
     if (savedUser && savedUser.name) {
       setUser(savedUser); setOnboardingComplete(true);
     }
-    if (savedStats) setStats(savedStats);
     if (savedDark === true) setDarkMode(true);
     return () => {
       clearTimeout(timer);
@@ -1112,27 +1403,49 @@ export default function RutaVerde() {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
-  const handleStartRoute = () => {
-    showToast("¡Ruta iniciada! Sumarás puntos al llegar. 🚲");
+  const handleStartRoute = (rutaSeleccionada) => {
+    if (!rutaSeleccionada) return;
+    const co2Evitado = metricas.calcularCO2Evitado(
+      rutaSeleccionada.distanciaKm,
+      rutaSeleccionada.medio
+    );
+    const puntosNuevos = metricas.calcularPuntos(co2Evitado, rutaSeleccionada.distanciaKm);
+
+    setRutaActiva({
+      ...rutaSeleccionada,
+      co2Evitado,
+      puntosNuevos,
+      destinoCoords: destCoords
+    });
+    setNavegacionActiva(true);
     setActiveTab('mapa');
+    showToast(`🗺️ Navegando: ${rutaSeleccionada.title}`);
+  };
 
-    // Simulate completion after 4s
-    setTimeout(() => {
-      const co2Evitado = metricas.calcularCO2Evitado(5, 'metro');
-      const puntosNuevos = metricas.calcularPuntos(co2Evitado, 5);
+  const handleFinalizarViaje = () => {
+    if (!rutaActiva) return;
+    const newStats = {
+      ...stats,
+      points: stats.points + rutaActiva.puntosNuevos,
+      co2Total: parseFloat((stats.co2Total + rutaActiva.co2Evitado).toFixed(3)),
+      kmTotal: parseFloat((stats.kmTotal + rutaActiva.distanciaKm).toFixed(2)),
+      rutasCount: stats.rutasCount + 1
+    };
+    setStats(newStats);
+    storage.set('rv_stats', newStats);
+    setNavegacionActiva(false);
+    setRutaActiva(null);
+    setDestCoords(null);
+    setActiveTab('inicio');
+    setShowConfetti(true);
+    showToast(`🌱 ¡Llegaste! +${rutaActiva.puntosNuevos} puntos · ${rutaActiva.co2Evitado.toFixed(2)}kg CO₂ evitado`);
+  };
 
-      const newStats = {
-        ...stats,
-        points: stats.points + puntosNuevos,
-        co2Total: stats.co2Total + co2Evitado,
-        kmTotal: stats.kmTotal + 5,
-        rutasCount: stats.rutasCount + 1
-      };
-
-      setStats(newStats);
-      storage.set('rv_stats', newStats);
-      showToast(`¡Viaje completado! +${puntosNuevos} puntos 🌱`);
-    }, 4000);
+  const handleCancelarNavegacion = () => {
+    setNavegacionActiva(false);
+    setRutaActiva(null);
+    setActiveTab('rutas');
+    showToast('Navegación cancelada');
   };
 
   const handleNavigate = (tab, coords = null) => {
@@ -1226,6 +1539,15 @@ export default function RutaVerde() {
 
   return (
     <ErrorBoundary>
+      {navegacionActiva && rutaActiva && (
+        <NavegacionActivaScreen
+          ruta={rutaActiva}
+          userPos={userPos}
+          onFinalizar={handleFinalizarViaje}
+          onCancelar={handleCancelarNavegacion}
+          darkMode={darkMode}
+        />
+      )}
       <div className={`min-h-screen bg-[#F0FFF8] dark:bg-slate-950 text-[#1A1A2E] dark:text-white font-['Inter'] selection:bg-[#00C896] selection:text-white transition-colors duration-500`}>
         {!isOnline && (
           <div className="fixed top-0 left-0 right-0 z-[10000] bg-red-500 text-white text-[10px] font-black uppercase tracking-[0.2em] py-2 text-center animate-slide-down">
@@ -1271,8 +1593,23 @@ export default function RutaVerde() {
               </div>
 
               <Suspense fallback={<div className="flex items-center justify-center h-full"><Skeleton className="w-full h-64" /></div>}>
-                {activeTab === 'inicio' && <HomeScreen user={user} onNavigate={handleNavigate} stats={stats} darkMode={darkMode} alertas={alertas} alertasCargando={alertasCargando} />}
-                {activeTab === 'rutas' && <RoutePlanner onStart={handleStartRoute} destination={destCoords} darkMode={darkMode} />}
+                {activeTab === 'inicio' && (
+                  <HomeScreen
+                    user={user}
+                    onNavigate={handleNavigate}
+                    stats={stats}
+                    darkMode={darkMode}
+                    alertas={alertas}
+                    alertasCargando={alertasCargando}
+                  />
+                )}
+                {activeTab === 'rutas' && (
+                  <RoutePlanner
+                    onStart={handleStartRoute}
+                    destination={destCoords}
+                    darkMode={darkMode}
+                  />
+                )}
                 {activeTab === 'mapa' && <LiveMapScreen darkMode={darkMode} />}
                 {activeTab === 'puntos' && <GamificationScreen points={stats.points} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} co2Total={stats.co2Total} />}
                 {activeTab === 'perfil' && <ProfileScreen user={user} stats={stats} onLogout={handleLogout} darkMode={darkMode} setDarkMode={setDarkMode} />}
@@ -1290,8 +1627,11 @@ export default function RutaVerde() {
                 <button key={tab.id} onClick={() => handleNavigate(tab.id)} className={`flex flex-col items-center gap-1.5 transition-all duration-300 relative ${activeTab === tab.id ? 'text-[#00C896] -translate-y-2' : 'text-gray-300 dark:text-slate-600 hover:text-gray-500'}`}>
                   <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === tab.id ? 'bg-green-50 dark:bg-green-900/10 shadow-lg' : 'bg-transparent'}`}>
                     {React.cloneElement(tab.icon, { size: 24, strokeWidth: activeTab === tab.id ? 3 : 2 })}
+                    {tab.id === 'mapa' && navegacionActiva && (
+                      <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#00C896] rounded-full animate-ping" />
+                    )}
                   </div>
-                  {tab.badge && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse"></span>}
+                  {tab.badge && !navegacionActiva && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse"></span>}
                   <span className="text-[9px] font-black uppercase tracking-widest leading-none">{tab.label}</span>
                 </button>
               ))}

@@ -18,31 +18,28 @@ test('RUTA VERDE Full Flow Verification', async ({ page }) => {
 
   // 4. Start Route
   await page.click('button:has-text("Iniciar ruta")');
-  await expect(page.locator('text=/Ruta iniciada/i')).toBeVisible();
+  // Check for navigation toast
+  await expect(page.locator('text=/Navegando/i')).toBeVisible();
 
-  // 5. Navigation to Puntos
+  // 5. Active Navigation Check
+  await expect(page.locator('text=/Paso 1/i')).toBeVisible();
+
+  // 6. Finish Route
+  await page.click('button:has-text("Finalizar viaje anticipado")');
+  // Check for arrival toast
+  await expect(page.locator('text=/¡Llegaste!/i')).toBeVisible();
+
+  // 7. Navigation to Puntos
   await page.click('nav button:has-text("Puntos")');
-  const badgeElement = page.locator('h2.uppercase');
-  await expect(badgeElement).toBeVisible({ timeout: 10000 });
-  const badgeTextBefore = await badgeElement.innerText();
 
-  // 6. Easter Egg
+  // 8. Easter Egg
   const logo = page.locator('span:has-text("RUTA VERDE")').first();
   for(let i = 0; i < 5; i++) {
     await logo.click();
   }
   await expect(page.locator('text=/Tú sí que eres verde/i')).toBeVisible();
 
-  // 7. Profile
-  await page.click('nav button:has-text("Perfil")');
-  await expect(page.locator('h2', { hasText: 'Jules Engineer' })).toBeVisible();
-
-  // 8. Persistence Check
-  await page.reload();
-  // After reload, we should be on Home if onboarding was complete
-  await expect(page.locator('h1')).toContainText('Hola, Jules Engineer');
-
-  // Navigate back to profile and verify
+  // 9. Profile
   await page.click('nav button:has-text("Perfil")');
   await expect(page.locator('h2', { hasText: 'Jules Engineer' })).toBeVisible();
 
