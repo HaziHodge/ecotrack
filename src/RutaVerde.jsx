@@ -73,9 +73,38 @@ const iconIncidente = (severity) => L.divIcon({
 });
 
 const METRO_LINES = [
-  { name: 'L1', color: '#f44336', coords: [[-33.4447, -70.6874], [-33.4442, -70.6511], [-33.4312, -70.6094], [-33.4144, -70.5815]] },
-  { name: 'L2', color: '#ffeb3b', coords: [[-33.4012, -70.6434], [-33.4489, -70.6511], [-33.5012, -70.6588]] },
-  { name: 'L5', color: '#4caf50', coords: [[-33.4612, -70.7434], [-33.4442, -70.6511], [-33.4812, -70.5934]] }
+  { name: 'L1', color: '#FF0000', weight: 5, coords: [
+    [-33.4569,-70.6483],[-33.4555,-70.6468],[-33.4542,-70.6448],[-33.4525,-70.6427],
+    [-33.4511,-70.6398],[-33.4499,-70.6371],[-33.4489,-70.6511],[-33.4477,-70.6400],
+    [-33.4462,-70.6350],[-33.4447,-70.6299],[-33.4432,-70.6224],[-33.4418,-70.6148],
+    [-33.4402,-70.6050],[-33.4387,-70.5970],[-33.4370,-70.5890],[-33.4352,-70.5815],
+    [-33.4335,-70.5740],[-33.4318,-70.5670],[-33.4300,-70.5600],[-33.4280,-70.5530]
+  ]},
+  { name: 'L2', color: '#FFD700', weight: 5, coords: [
+    [-33.3908,-70.6394],[-33.3960,-70.6394],[-33.4012,-70.6394],[-33.4065,-70.6394],
+    [-33.4120,-70.6394],[-33.4175,-70.6406],[-33.4230,-70.6418],[-33.4285,-70.6430],
+    [-33.4340,-70.6442],[-33.4395,-70.6455],[-33.4450,-70.6468],[-33.4489,-70.6511],
+    [-33.4540,-70.6525],[-33.4590,-70.6540],[-33.4640,-70.6555],[-33.4700,-70.6570],
+    [-33.4760,-70.6585],[-33.4820,-70.6600],[-33.4880,-70.6615],[-33.4940,-70.6630]
+  ]},
+  { name: 'L4', color: '#0000CD', weight: 5, coords: [
+    [-33.4489,-70.6511],[-33.4510,-70.6450],[-33.4530,-70.6390],[-33.4550,-70.6330],
+    [-33.4570,-70.6270],[-33.4590,-70.6210],[-33.4610,-70.6150],[-33.4630,-70.6090],
+    [-33.4650,-70.6030],[-33.4670,-70.5970],[-33.4690,-70.5910],[-33.4710,-70.5850],
+    [-33.4730,-70.5790],[-33.4750,-70.5730],[-33.4770,-70.5670],[-33.4790,-70.5610]
+  ]},
+  { name: 'L5', color: '#008000', weight: 5, coords: [
+    [-33.4489,-70.7200],[-33.4489,-70.7100],[-33.4489,-70.7000],[-33.4489,-70.6900],
+    [-33.4489,-70.6800],[-33.4489,-70.6700],[-33.4489,-70.6600],[-33.4489,-70.6511],
+    [-33.4530,-70.6430],[-33.4570,-70.6350],[-33.4610,-70.6270],[-33.4650,-70.6190],
+    [-33.4690,-70.6110],[-33.4730,-70.6030],[-33.4770,-70.5950],[-33.4810,-70.5870]
+  ]},
+  { name: 'L6', color: '#9400D3', weight: 5, coords: [
+    [-33.4950,-70.6630],[-33.4900,-70.6600],[-33.4850,-70.6570],[-33.4800,-70.6540],
+    [-33.4750,-70.6510],[-33.4700,-70.6480],[-33.4650,-70.6450],[-33.4600,-70.6420],
+    [-33.4550,-70.6390],[-33.4500,-70.6360],[-33.4489,-70.6511],[-33.4440,-70.6370],
+    [-33.4390,-70.6230],[-33.4340,-70.6090]
+  ]}
 ];
 
 const BICI_STATIONS = [
@@ -581,11 +610,11 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
       time: 45, cost: 800, co2: 0.2, co2Level: 15,
       color: 'bg-[#00C896]', icon: <Leaf size={20} />, realTime: "Micro 301 en 4 min",
       instrucciones: [
-        "🚶 Camina 200m hasta la parada en Av. Vicuña Mackenna",
-        "🚌 Toma la micro 301 dirección Las Condes — 4 paradas",
-        "🚇 Baja en Baquedano y toma Metro L1 dirección Tobalaba",
+        "🚶 Camina 200m hasta la parada en tu esquina",
+        "🚌 Sube a la micro 301 — dirección Las Condes (4 paradas)",
+        "🚇 Baja en Baquedano y toma Metro L1 → Tobalaba",
         "🚇 Baja en la estación más cercana a tu destino",
-        "🚶 Camina 3 min hasta llegar"
+        "🚶 Camina 3 min — ¡llegaste!"
       ]
     },
     {
@@ -594,9 +623,9 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
       time: 28, cost: 2500, co2: 1.8, co2Level: 75,
       color: 'bg-[#FFD93D]', icon: <Zap size={20} />, realTime: "Auto a 2 km",
       instrucciones: [
-        "📍 Dirígete al punto de encuentro indicado",
-        "🚗 El conductor llegará en ~3 minutos",
-        "🚗 El auto te llevará directo a tu destino"
+        "📍 Dirígete al punto de encuentro (50m al norte)",
+        "🚗 El conductor llega en ~3 minutos",
+        "🚗 Viaje directo a tu destino sin transbordos"
       ]
     },
     {
@@ -606,9 +635,9 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
       color: 'bg-blue-400', icon: <Bike size={20} />, realTime: "12 bicis libres",
       instrucciones: [
         "🚴 Retira una BipBici en la estación cercana",
-        "🚴 Pedalea por la ciclovía de Av. Providencia — 2.1 km",
-        "🚇 Estaciona la bici y toma Metro L1 — 2 estaciones",
-        "🚶 Camina 4 min hasta tu destino"
+        "🚴 Pedalea por ciclovía Providencia — 2.1 km al oriente",
+        "🔒 Estaciona la bici en la estación de destino",
+        "🚶 Camina 4 min — ¡llegaste!"
       ]
     },
   ];
@@ -627,7 +656,7 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
     const rutaElegida = filteredRoutes.find(r => r.id === selected);
     setTimeout(() => {
       setStarting(false);
-      onStart(rutaElegida); // pasar objeto completo
+      onStart(rutaElegida);
     }, 800);
   };
 
@@ -1365,7 +1394,6 @@ export default function RutaVerde() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [redeeming, setRedeeming] = useState(null);
   const [destCoords, setDestCoords] = useState(null);
-
   const [navegacionActiva, setNavegacionActiva] = useState(false);
   const [rutaActiva, setRutaActiva] = useState(null);
   const { pos: userPos } = useGeolocalizacion();
@@ -1405,18 +1433,9 @@ export default function RutaVerde() {
 
   const handleStartRoute = (rutaSeleccionada) => {
     if (!rutaSeleccionada) return;
-    const co2Evitado = metricas.calcularCO2Evitado(
-      rutaSeleccionada.distanciaKm,
-      rutaSeleccionada.medio
-    );
+    const co2Evitado = parseFloat(metricas.calcularCO2Evitado(rutaSeleccionada.distanciaKm, rutaSeleccionada.medio).toFixed(3));
     const puntosNuevos = metricas.calcularPuntos(co2Evitado, rutaSeleccionada.distanciaKm);
-
-    setRutaActiva({
-      ...rutaSeleccionada,
-      co2Evitado,
-      puntosNuevos,
-      destinoCoords: destCoords
-    });
+    setRutaActiva({ ...rutaSeleccionada, co2Evitado, puntosNuevos, destinoCoords: destCoords });
     setNavegacionActiva(true);
     setActiveTab('mapa');
     showToast(`🗺️ Navegando: ${rutaSeleccionada.title}`);
@@ -1438,14 +1457,13 @@ export default function RutaVerde() {
     setDestCoords(null);
     setActiveTab('inicio');
     setShowConfetti(true);
-    showToast(`🌱 ¡Llegaste! +${rutaActiva.puntosNuevos} puntos · ${rutaActiva.co2Evitado.toFixed(2)}kg CO₂ evitado`);
+    showToast(`🌱 ¡Llegaste! +${rutaActiva.puntosNuevos} pts · ${rutaActiva.co2Evitado.toFixed(2)}kg CO₂ evitado`);
   };
 
   const handleCancelarNavegacion = () => {
     setNavegacionActiva(false);
     setRutaActiva(null);
     setActiveTab('rutas');
-    showToast('Navegación cancelada');
   };
 
   const handleNavigate = (tab, coords = null) => {
