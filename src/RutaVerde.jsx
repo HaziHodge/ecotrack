@@ -13,6 +13,43 @@ import {
 
 // --- UTILS & HOOKS (Inlined) ---
 
+const Button = ({ children, onClick, variant = 'primary', className = "", fullWidth = false, loading = false, ...props }) => {
+  const variants = {
+    primary: "bg-gradient-to-r from-[#00C896] to-[#00A87E] text-white shadow-lg shadow-green-500/30 hover:shadow-green-500/50",
+    secondary: "bg-[#1A1A2E] text-white",
+    ghost: "bg-transparent text-[#4B5563] dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800",
+    outline: "border-2 border-[#00C896] text-[#00A87E] hover:bg-green-50 dark:hover:bg-green-900/10"
+  };
+  return (
+    <button
+      onClick={onClick}
+      className={`px-6 py-4 rounded-2xl font-black transition-all active:scale-95 flex items-center justify-center gap-2 ${variants[variant]} ${fullWidth ? 'w-full' : ''} ${className}`}
+      {...props}
+    >
+      {loading ? <RefreshCcw className="animate-spin" /> : children}
+    </button>
+  );
+};
+
+const Input = ({ className = "", ...props }) => (
+  <input
+    className={`w-full p-4 bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl outline-none font-bold focus:border-[#00C896] transition-all ${className}`}
+    {...props}
+  />
+);
+
+const Card = ({ children, className = "" }) => (
+  <div className={`bg-white dark:bg-slate-900 rounded-3xl shadow-xl p-5 border border-gray-100 dark:border-slate-800 ${className}`}>
+    {children}
+  </div>
+);
+
+const Badge = ({ children, className = "" }) => (
+  <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${className}`}>
+    {children}
+  </span>
+);
+
 const storage = {
   get: (key, fallback = null) => {
     try {
@@ -508,7 +545,13 @@ const HomeComponent = ({ user, onNavigate, stats, alertas }) => {
       <Card className="!p-6 space-y-4">
         <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
           <Search size={20} className="text-gray-400" />
-          <input type="text" placeholder="¿A dónde vas?" value={search} onChange={e => setSearch(e.target.value)} className="bg-transparent w-full outline-none font-bold" />
+          <input
+            type="text"
+            placeholder="¿A dónde vas?"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="bg-transparent w-full outline-none font-bold dark:text-white"
+          />
         </div>
         <Button fullWidth onClick={() => onNavigate('rutas')}><Search size={20} /> Buscar ruta</Button>
       </Card>
@@ -765,11 +808,21 @@ export default function RutaVerde() {
 
   if (!onboardingComplete) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-8 space-y-8">
+      <div className="min-h-screen bg-white dark:bg-slate-900 flex flex-col items-center justify-center p-8 space-y-8 transition-colors duration-500">
         <Leaf size={64} className="text-[#00C896]" />
-        <h1 className="text-4xl font-black text-center uppercase tracking-tighter">RUTA <span className="text-[#00C896]">VERDE</span></h1>
-        <input type="text" placeholder="Tu nombre" value={user.name} onChange={e => setUser({...user, name: e.target.value})} className="w-full p-4 bg-gray-50 border rounded-2xl outline-none font-bold" />
-        <Button fullWidth onClick={() => { storage.set('rv_onboarding', true); storage.set('rv_user', user); setOnboardingComplete(true); }}>Empezar</Button>
+        <h1 className="text-4xl font-black text-center uppercase tracking-tighter dark:text-white">RUTA <span className="text-[#00C896]">VERDE</span></h1>
+        <Input
+          type="text"
+          placeholder="Tu nombre"
+          value={user.name}
+          onChange={e => setUser({...user, name: e.target.value})}
+        />
+        <Button
+          fullWidth
+          onClick={() => { storage.set('rv_onboarding', true); storage.set('rv_user', user); setOnboardingComplete(true); }}
+        >
+          Empezar
+        </Button>
       </div>
     );
   }
