@@ -36,7 +36,7 @@ const Button = ({ children, onClick, variant = 'primary', className = "", fullWi
 const Input = React.forwardRef(({ className = "", ...props }, ref) => (
   <input
     ref={ref}
-    className={`w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all ${className}`}
+    className={`w-full px-4 py-3 rounded-xl border border-white/10 bg-[#0D1117] text-white shadow-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all ${className}`}
     {...props}
   />
 ));
@@ -44,7 +44,7 @@ const Input = React.forwardRef(({ className = "", ...props }, ref) => (
 const Card = ({ children, className = "", delay = 0 }) => (
   <div
     style={{ animationDelay: `${delay}ms` }}
-    className={`bg-white dark:bg-slate-900 rounded-3xl shadow-xl shadow-green-900/5 p-5 border border-white/20 dark:border-slate-800 hover:scale-[1.01] transition-all duration-300 animate-slide-up fill-mode-forwards ${className}`}
+    className={`bg-[#161B22] rounded-3xl shadow-xl shadow-green-900/5 p-5 border border-white/10 hover:scale-[1.01] transition-all duration-300 animate-slide-up fill-mode-forwards ${className}`}
   >
     {children}
   </div>
@@ -68,18 +68,100 @@ const Skeleton = ({ className = "" }) => (
   <div className={`animate-pulse bg-gray-200 dark:bg-slate-800 rounded-xl ${className}`}></div>
 );
 
+const WeatherWidget = () => {
+  const [weather, setWeather] = useState(null);
+  useEffect(() => {
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=-33.45&longitude=-70.67&current_weather=true')
+      .then(r => r.json())
+      .then(data => setWeather(data.current_weather))
+      .catch(() => {});
+  }, []);
+  if (!weather) return null;
+  return (
+    <div className="flex items-center gap-3 bg-blue-500/10 p-3 rounded-2xl border border-blue-500/20">
+      <span className="text-xl">☀️</span>
+      <div>
+        <p className="text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest">Santiago</p>
+        <p className="text-xs font-black text-blue-900 dark:text-blue-200">{weather.temperature}°C · Despejado</p>
+      </div>
+    </div>
+  );
+};
+
+const CollectiveImpact = () => (
+  <Card className="!p-6 bg-[#0D1117] border border-green-500/20 relative overflow-hidden">
+    <div className="relative z-10">
+      <p className="text-[10px] font-black text-[#00C896] uppercase tracking-[0.2em] mb-2">Impacto Colectivo</p>
+      <h3 className="text-2xl font-black text-white">12.4 <span className="text-sm opacity-50">Toneladas</span></h3>
+      <p className="text-[10px] text-gray-400 font-bold mt-1">CO₂ evitado por la comunidad este mes.</p>
+    </div>
+    <div className="absolute -bottom-6 -right-6 opacity-10">
+      <Leaf size={100} fill="#00C896" />
+    </div>
+  </Card>
+);
+
+const NearbyTransport = ({ userPos }) => {
+  const nearby = useMemo(() => {
+    if (!userPos || !userPos[0]) return [];
+    const getDist = (p1, p2) => {
+      const R = 6371;
+      const dLat = (p2[0]-p1[0]) * Math.PI / 180;
+      const dLon = (p2[1]-p1[1]) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(p1[0]*Math.PI/180) * Math.cos(p2[0]*Math.PI/180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    };
+    const all = [
+      ...BICI_STATIONS.map(s => ({ ...s, type: 'bici', icon: '🚴' })),
+      ...MICRO_STOPS.map(s => ({ ...s, type: 'bus', icon: '🚌' })),
+      ...SCOOTER_ZONES.map(s => ({ ...s, type: 'scooter', icon: '🛴' })),
+      ...[
+          {pos:[-33.4377, -70.6508], name:'Plaza de Armas', type:'metro', icon:'🚇'},
+          {pos:[-33.4172, -70.5985], name:'Los Leones', type:'metro', icon:'🚇'},
+          {pos:[-33.4231, -70.6062], name:'Tobalaba', type:'metro', icon:'🚇'},
+      ]
+    ];
+    return all.map(item => ({
+      ...item,
+      dist: getDist(userPos, item.pos)
+    })).sort((a, b) => a.dist - b.dist).slice(0, 3);
+  }, [userPos]);
+  if (nearby.length === 0) return null;
+  return (
+    <div className="grid grid-cols-1 gap-3">
+      {nearby.map((item, i) => (
+        <div key={i} className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gray-50 dark:bg-slate-700 rounded-xl flex items-center justify-center text-xl">{item.icon}</div>
+            <div className="min-w-0 max-w-[140px]">
+              <p className="font-black text-xs dark:text-white truncate">{item.name || item.zona}</p>
+              <p className="text-[10px] text-gray-400 font-bold">{item.dist.toFixed(2)} km</p>
+            </div>
+          </div>
+          <Badge color={item.type === 'metro' ? 'red' : item.type === 'bici' ? 'blue' : 'green'}>
+            {item.type}
+          </Badge>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 // --- UTILS & HOOKS (Inlined) ---
 
 /**
- * Seguro wrapper para localStorage con manejo de errores (Safari Private Mode fallback)
+ * Safe storage wrapper for RUTA VERDE
  */
-const storage = {
+const safeStorage = {
   get: (key, fallback = null) => {
     try {
       const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : fallback;
+      if (!item) return fallback;
+      return JSON.parse(item);
     } catch (error) {
-      console.warn(`Error reading from localStorage (${key}):`, error);
+      console.warn(`[SafeStorage] Error reading ${key}:`, error);
       return fallback;
     }
   },
@@ -88,15 +170,22 @@ const storage = {
       window.localStorage.setItem(key, JSON.stringify(value));
       return true;
     } catch (error) {
-      console.warn(`Error writing to localStorage (${key}):`, error);
+      console.warn(`[SafeStorage] Error writing ${key}:`, error);
       return false;
+    }
+  },
+  remove: (key) => {
+    try {
+      window.localStorage.removeItem(key);
+    } catch (error) {
+      console.warn(`[SafeStorage] Error removing ${key}:`, error);
     }
   },
   clear: () => {
     try {
       window.localStorage.clear();
     } catch (error) {
-      console.warn("Error clearing localStorage:", error);
+      console.warn("[SafeStorage] Error clearing localStorage:", error);
     }
   }
 };
@@ -189,20 +278,31 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#F0FFF8] dark:bg-slate-950 flex flex-col items-center justify-center p-8 text-center">
-          <div className="w-24 h-24 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center text-[#00C896] mb-6 animate-bounce">
+        <div className="min-h-screen bg-[#0D1117] flex flex-col items-center justify-center p-8 text-center">
+          <div className="w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center text-red-500 mb-6 animate-bounce">
             <AlertTriangle size={48} />
           </div>
-          <h2 className="text-3xl font-black text-[#1A1A2E] dark:text-white mb-4">¡Ups! Algo salió mal 🌿</h2>
-          <p className="text-gray-500 dark:text-slate-400 font-bold mb-8 max-w-xs">
-            Hubo un error inesperado. No te preocupes, tus puntos están a salvo.
+          <h2 className="text-3xl font-black text-white mb-4">¡Ups! Algo salió mal 🌿</h2>
+          <p className="text-[#8b949e] font-bold mb-8 max-w-xs text-sm">
+            Hubo un error inesperado. No te preocupes, tus puntos están a salvo en la nube.
           </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="flex items-center gap-2 bg-[#00C896] text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-green-500/30 active:scale-95 transition-all"
-          >
-            <RefreshCcw size={20} className="animate-spin-slow" /> Reintentar
-          </button>
+          <div className="flex flex-col w-full max-w-xs gap-3">
+            <button
+              onClick={() => window.location.reload()}
+              className="flex items-center justify-center gap-2 bg-[#238636] text-white px-8 py-4 rounded-2xl font-black shadow-lg active:scale-95 transition-all"
+            >
+              <RefreshCcw size={20} /> Reintentar
+            </button>
+            <button
+              onClick={() => {
+                safeStorage.clear();
+                window.location.reload();
+              }}
+              className="flex items-center justify-center gap-3 bg-[#21262d] text-[#8b949e] border border-[#30363d] px-8 py-4 rounded-2xl font-black active:scale-95 transition-all text-xs"
+            >
+              <X size={16} /> Resetear Aplicación
+            </button>
+          </div>
         </div>
       );
     }
@@ -543,7 +643,7 @@ const CityMap = ({
   const pts = routePreview || localRoutePoints;
 
   return (
-    <div className={`relative bg-[#F8FAF9] dark:bg-slate-900 w-full h-full overflow-hidden ${className}`}>
+    <div className={`relative bg-[#0D1117] dark:bg-[#0D1117] w-full h-full overflow-hidden ${className}`}>
 
       {/* ── BUSCADOR ── z-[2000] para estar SOBRE todo lo demás */}
       <div className="absolute top-3 left-3 right-3 z-[2000]">
@@ -794,8 +894,8 @@ const CityMap = ({
 const CSSIllustration = ({ type }) => {
   if (type === 'city') {
     return (
-      <div className="relative w-full h-48 bg-gradient-to-b from-blue-50 to-green-50 dark:from-slate-800 dark:to-slate-900 rounded-[40px] overflow-hidden flex items-end justify-center">
-        <div className="absolute bottom-0 w-full h-1/2 bg-green-200/30 dark:bg-green-900/20 blur-3xl"></div>
+      <div className="relative w-full h-48 bg-gradient-to-b from-[#1A1A2E] to-[#0D1117] rounded-[40px] overflow-hidden flex items-end justify-center">
+        <div className="absolute bottom-0 w-full h-1/2 bg-green-900/10 blur-3xl"></div>
         <div className="relative flex items-end gap-1 mb-4">
           <div className="w-12 h-32 bg-gray-200 dark:bg-slate-700 rounded-t-lg animate-slide-up" style={{ animationDelay: '0.1s' }}></div>
           <div className="w-16 h-40 bg-gray-300 dark:bg-slate-600 rounded-t-lg animate-slide-up" style={{ animationDelay: '0.3s' }}></div>
@@ -808,8 +908,8 @@ const CSSIllustration = ({ type }) => {
   }
   if (type === 'welcome') {
     return (
-      <div className="relative w-full h-64 bg-green-50 dark:bg-green-900/10 rounded-[48px] overflow-hidden flex items-center justify-center">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white dark:from-slate-800 to-transparent opacity-50"></div>
+      <div className="relative w-full h-64 bg-[#0D1117] rounded-[48px] overflow-hidden flex items-center justify-center border border-white/5">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/5 to-transparent opacity-50"></div>
         <div className="relative z-10 scale-150">
           <div className="w-20 h-20 bg-[#00C896] rounded-3xl rotate-12 flex items-center justify-center text-white shadow-2xl animate-float">
             <Leaf size={40} fill="currentColor" />
@@ -888,12 +988,13 @@ const ProfileScreen = ({ user, stats, onLogout, darkMode, setDarkMode }) => <Pro
 // --- PANTALLAS ---
 
 const HomeComponent = ({ user, onNavigate, stats, darkMode, alertas, alertasCargando }) => {
+  const { pos: userPos } = useGeolocalizacion();
   const getMensaje = (nombre) => {
     const h = new Date().getHours();
     if (h < 9) return `Buenos días, ${nombre}. ¿Vamos en metro hoy? 🚇`;
     if (h < 14) return `¡Buen día! Cada viaje sostenible cuenta, ${nombre}. 🌿`;
     if (h < 19) return `¿Vuelta a casa en bici, ${nombre}? 🚴`;
-    return `Terminaste el día con ${stats.co2Total.toFixed(1)}kg menos de CO₂. ¡Bien! 🌱`;
+    return `Terminaste el día con ${stats?.co2Total?.toFixed(1) || '0.0'}kg menos de CO₂. ¡Bien! 🌱`;
   };
 
   const usuariosSimulados = 47 + (Math.floor(Date.now() / 86400000) % 30);
@@ -951,9 +1052,9 @@ const HomeComponent = ({ user, onNavigate, stats, darkMode, alertas, alertasCarg
       )}
       <header className="flex justify-between items-start" onClick={handleRefresh}>
         <div className="max-w-[70%]">
-          <h1 className="text-3xl font-black text-[#0D1B2A] dark:text-white leading-tight tracking-tight">Hola, {user.name} 👋</h1>
+          <h1 className="text-3xl font-black text-[#f0f6fc] leading-tight tracking-tight">Hola, {user?.name || 'Viajero'} 👋</h1>
           <div className="flex items-center gap-2 mt-1">
-            <p className="text-[#4B5563] dark:text-slate-400 flex items-center gap-1 font-bold"><MapPin size={14} className="text-[#00C896]" /> {user.city}, Chile</p>
+            <p className="text-[#8b949e] flex items-center gap-1 font-bold"><MapPin size={14} className="text-[#2ea043]" /> {user?.city || 'Santiago'}, Chile</p>
             <span className="bg-[#00C896]/10 text-[#00C896] text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">{usuariosSimulados} activos</span>
           </div>
         </div>
@@ -1024,7 +1125,18 @@ const HomeComponent = ({ user, onNavigate, stats, darkMode, alertas, alertasCarg
         ))}
       </div>
 
-      <h2 className="text-xl font-black text-[#0D1B2A] dark:text-white tracking-tight">{getMensaje(user.name.split(' ')[0])}</h2>
+      <h2 className="text-xl font-black text-[#0D1B2A] dark:text-white tracking-tight">{getMensaje(user?.name?.split(' ')[0])}</h2>
+
+      <div className="grid grid-cols-2 gap-3">
+        <WeatherWidget />
+        <div className="bg-green-500/10 p-3 rounded-2xl border border-green-500/20 flex items-center gap-3">
+           <span className="text-xl">📊</span>
+           <div>
+              <p className="text-[10px] font-black text-green-700 dark:text-green-400 uppercase tracking-widest">Global</p>
+              <p className="text-xs font-black text-green-900 dark:text-green-200">#{400 + stats?.points} en Chile</p>
+           </div>
+        </div>
+      </div>
 
       <div className="bg-[#00C896]/10 p-3 rounded-2xl flex items-center gap-2 border border-[#00C896]/20">
          <div className="w-8 h-8 bg-[#00C896] rounded-full flex items-center justify-center text-white shrink-0 shadow-lg shadow-green-500/20">
@@ -1036,22 +1148,29 @@ const HomeComponent = ({ user, onNavigate, stats, darkMode, alertas, alertasCarg
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <Card className="text-center !p-4 bg-gradient-to-br from-[#1A1A2E] to-[#16213E] text-white overflow-hidden relative border-none" delay={200}>
-          <p className="text-2xl font-black text-[#00C896] z-10 relative"><CountUp end={stats.co2Total} decimals={1} /></p>
+        <Card className="text-center !p-4 bg-[#0D1117] text-white overflow-hidden relative border border-green-500/20" delay={200}>
+          <p className="text-2xl font-black text-[#00C896] z-10 relative"><CountUp end={stats?.co2Total || 0} decimals={1} /></p>
           <p className="text-[9px] opacity-60 uppercase tracking-widest font-black mt-1 z-10 relative">KG CO₂</p>
           <Leaf className="absolute -bottom-4 -right-4 text-[#00C896]/10 rotate-12 animate-float" size={60} />
         </Card>
-        <Card className="text-center !p-4 bg-gradient-to-br from-[#1A1A2E] to-[#16213E] text-white overflow-hidden relative border-none" delay={300}>
-          <p className="text-2xl font-black text-[#FFD93D] z-10 relative"><CountUp end={stats.points} /></p>
+        <Card className="text-center !p-4 bg-[#0D1117] text-white overflow-hidden relative border border-yellow-500/20" delay={300}>
+          <p className="text-2xl font-black text-[#FFD93D] z-10 relative"><CountUp end={stats?.points || 0} /></p>
           <p className="text-[9px] opacity-60 uppercase tracking-widest font-black mt-1 z-10 relative">PTS</p>
           <Star className="absolute -bottom-4 -right-4 text-white/5 rotate-12" size={60} />
         </Card>
-        <Card className="text-center !p-4 bg-gradient-to-br from-[#1A1A2E] to-[#16213E] text-white overflow-hidden relative border-none" delay={400}>
-          <p className="text-2xl font-black text-blue-400 z-10 relative"><CountUp end={stats.kmTotal} decimals={1} /></p>
+        <Card className="text-center !p-4 bg-[#0D1117] text-white overflow-hidden relative border border-blue-500/20" delay={400}>
+          <p className="text-2xl font-black text-blue-400 z-10 relative"><CountUp end={stats?.kmTotal || 0} decimals={1} /></p>
           <p className="text-[9px] opacity-60 uppercase tracking-widest font-black mt-1 z-10 relative">KM</p>
           <Navigation className="absolute -bottom-4 -right-4 text-white/5 rotate-12" size={60} />
         </Card>
       </div>
+
+      <div className="space-y-4">
+         <h3 className="text-sm font-black text-gray-500 uppercase tracking-widest">Transporte Cercano</h3>
+         <NearbyTransport userPos={userPos} />
+      </div>
+
+      <CollectiveImpact />
 
       {alertaPrincipal && (
         <div className={`p-4 rounded-2xl flex items-center gap-4 animate-pulse border
@@ -1367,7 +1486,7 @@ const LiveMapComponent = ({ darkMode, onNavigateToRutas }) => {
   const [modoFiltro, setModoFiltro] = useState(null);
   const [destSeleccionado, setDestSeleccionado] = useState(null);
   const { alertas, cargando, ultimaActualizacion, refetch } = useTrafficAlerts();
-  const user = useMemo(() => storage.get('rv_user', { city: 'Santiago' }), []);
+  const user = useMemo(() => safeStorage.get('rv_user', { city: 'Santiago' }), []);
 
   const [paso, setPaso] = useState(0); // 0=mapa libre, 1=destino confirmado, 2=eligiendo modo
   const [nombreDestino, setNombreDestino] = useState('');
@@ -1529,11 +1648,11 @@ const GamificationComponent = ({ points, showToast, redeeming, setRedeeming, co2
     'Guardián del Clima': { min: 20, max: 50 },
     'Héroe Verde': { min: 50, max: 50 }
   };
-  const currentBadge = metricas.obtenerInsignia(co2Total);
-  const rango = UMBRALES[currentBadge];
+  const currentBadge = metricas.obtenerInsignia(co2Total || 0);
+  const rango = UMBRALES[currentBadge] || UMBRALES['Brote Verde'];
   const porcentajeProgreso = currentBadge === 'Héroe Verde'
     ? 100
-    : Math.round(((co2Total - rango.min) / (rango.max - rango.min)) * 100);
+    : Math.round((((co2Total || 0) - rango.min) / (rango.max - rango.min)) * 100);
 
   const rewards = [
     { id: 1, title: 'Café gratis en Starbucks', cost: 500, icon: <Coffee />, color: 'bg-green-700' },
@@ -1598,7 +1717,7 @@ const GamificationComponent = ({ points, showToast, redeeming, setRedeeming, co2
 
       <Card className="!p-10 text-center bg-gradient-to-br from-[#1A1A2E] to-[#16213E] text-white relative overflow-hidden border-none shadow-2xl" delay={100}>
         <p className="text-xs font-black opacity-50 tracking-[0.2em] uppercase">Puntos Totales</p>
-        <h3 className="text-7xl font-black mt-4 text-[#00C896] drop-shadow-xl"><CountUp end={points} /></h3>
+        <h3 className="text-7xl font-black mt-4 text-[#00C896] drop-shadow-xl"><CountUp end={points || 0} /></h3>
         <Leaf className="absolute -bottom-8 -right-8 text-white/5 rotate-12" size={120} />
       </Card>
 
@@ -1641,7 +1760,7 @@ const GamificationComponent = ({ points, showToast, redeeming, setRedeeming, co2
                       {i < 3 && <Trophy size={10} className="absolute -top-3 -left-1 text-yellow-500 animate-bounce" />}
                    </div>
                    <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center font-black text-xs relative overflow-visible">
-                      {u.name[0]}
+                      {u?.name?.[0] || '?'}
                       {i === 0 && <div className="absolute -top-1.5 -right-1.5 text-yellow-500 animate-pulse"><Zap size={12} fill="currentColor" /></div>}
                    </div>
                    <p className="font-bold text-sm">{u.name} {u.me && <span className="text-[8px] bg-[#00C896] text-white px-2 py-0.5 rounded-full ml-1">TÚ</span>}</p>
@@ -1663,10 +1782,10 @@ const ProfileComponent = ({ user, stats, onLogout, darkMode, setDarkMode }) => {
   const maxVal = Math.max(...weeklyData);
 
   const [showShareCard, setShowShareCard] = useState(false);
-  const ahorroEstimado = Math.round(stats.rutasCount * 1200);
+  const ahorroEstimado = Math.round((stats?.rutasCount || 0) * 1200);
 
-  const diasUsandoApp = Math.max(1, stats.rutasCount);
-  const miHuellaDiaria = (stats.co2Total / diasUsandoApp).toFixed(2);
+  const diasUsandoApp = Math.max(1, stats?.rutasCount || 0);
+  const miHuellaDiaria = ((stats?.co2Total || 0) / diasUsandoApp).toFixed(2);
   const promedioSantiago = 2.5;
   const porcentajeTuya = Math.min(100, Math.round((parseFloat(miHuellaDiaria) / promedioSantiago) * 100));
   const ahorroPerc = Math.max(0, Math.round((1 - parseFloat(miHuellaDiaria) / promedioSantiago) * 100));
@@ -1675,26 +1794,26 @@ const ProfileComponent = ({ user, stats, onLogout, darkMode, setDarkMode }) => {
     <div className="space-y-8 pb-40 animate-fade-in pt-8">
       <div className="flex flex-col items-center">
         <div className="w-32 h-32 bg-gradient-to-tr from-[#00C896] to-[#00A87E] rounded-[48px] flex items-center justify-center text-white text-5xl font-black shadow-2xl relative">
-           {user.name[0]}
+           {user?.name?.[0] || 'U'}
            <div className="absolute -bottom-2 -right-2 bg-[#FFD93D] text-[#1A1A2E] p-2 rounded-2xl shadow-xl animate-bounce">
               <Star size={20} fill="currentColor" />
            </div>
         </div>
-        <h2 className="mt-6 text-3xl font-black text-[#0D1B2A] dark:text-white tracking-tight">{user.name}</h2>
-        <p className="text-[#4B5563] dark:text-slate-400 font-black uppercase tracking-widest text-[10px]">{metricas.obtenerInsignia(stats.co2Total)} • {user.city}</p>
+        <h2 className="mt-6 text-3xl font-black text-[#0D1B2A] dark:text-white tracking-tight">{user?.name || 'Usuario'}</h2>
+        <p className="text-[#4B5563] dark:text-slate-400 font-black uppercase tracking-widest text-[10px]">{metricas.obtenerInsignia(stats?.co2Total || 0)} • {user?.city || 'Santiago'}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
          <Card className="text-center !p-4" delay={100}>
-            <p className="text-xl font-black text-[#00C896]">{stats.co2Total.toFixed(1)}kg</p>
+            <p className="text-xl font-black text-[#00C896]">{stats?.co2Total?.toFixed(1) || '0.0'}kg</p>
             <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">CO₂ Ahorrado</p>
          </Card>
          <Card className="text-center !p-4" delay={200}>
-            <p className="text-xl font-black text-blue-500">{stats.rutasCount}</p>
+            <p className="text-xl font-black text-blue-500">{stats?.rutasCount || 0}</p>
             <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Viajes Públicos</p>
          </Card>
          <Card className="text-center !p-4" delay={300}>
-            <p className="text-xl font-black text-[#FFD93D]">{stats.kmTotal.toFixed(1)}km</p>
+            <p className="text-xl font-black text-[#FFD93D]">{stats?.kmTotal?.toFixed(1) || '0.0'}km</p>
             <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Distancia Bici</p>
          </Card>
          <Card className="text-center !p-4" delay={400}>
@@ -1745,13 +1864,13 @@ const ProfileComponent = ({ user, stats, onLogout, darkMode, setDarkMode }) => {
               <Leaf size={32} fill="white" className="text-white" />
             </div>
             <p className="text-[#00C896] font-black text-xs uppercase tracking-widest mb-2">Este mes ahorré</p>
-            <p className="text-6xl font-black text-white">{stats.co2Total.toFixed(1)}</p>
+            <p className="text-6xl font-black text-white">{stats?.co2Total?.toFixed(1) || '0.0'}</p>
             <p className="text-[#00C896] font-black text-sm">kg de CO₂</p>
-            <p className="text-gray-400 text-xs mt-2">{metricas.generarComparativaViral(stats.co2Total)}</p>
+            <p className="text-gray-400 text-xs mt-2">{metricas.generarComparativaViral(stats?.co2Total || 0)}</p>
             <div className="mt-6 pt-4 border-t border-white/10">
-              <p className="text-white font-black text-sm">{user.name}</p>
+              <p className="text-white font-black text-sm">{user?.name || 'Usuario'}</p>
               <p className="text-gray-500 text-[10px] uppercase tracking-widest">
-                {metricas.obtenerInsignia(stats.co2Total)} • rutaverde-zeta.vercel.app
+                {metricas.obtenerInsignia(stats?.co2Total || 0)} • rutaverde-zeta.vercel.app
               </p>
             </div>
           </div>
@@ -1784,12 +1903,28 @@ const NavegacionActivaScreen = ({ ruta, userPos, onFinalizar, onCancelar, darkMo
   const [posActual, setPosActual] = useState(userPos);
   const [routePoints, setRoutePoints] = useState([]);
   const [cargandoRuta, setCargandoRuta] = useState(true);
+  const [recalculando, setRecalculando] = useState(false);
   const [iniciado, setIniciado] = useState(Date.now());
+
+  // Voz — Web Speech API
+  const hablar = useCallback((texto) => {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(texto);
+    utterance.lang = 'es-CL';
+    utterance.rate = 1.1;
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  useEffect(() => {
+    hablar(ruta.instrucciones[instruccionIdx]);
+  }, [instruccionIdx, ruta.instrucciones, hablar]);
 
   // 1. Obtener ruta real con OSRM (gratuito, sin API key)
   const fetchRoute = useCallback(async (currentPos) => {
     const origen = currentPos || userPos;
     const destino = ruta.destinoCoords || [userPos[0] + 0.025, userPos[1] + 0.032];
+    setRecalculando(true);
     try {
       const url = `https://router.project-osrm.org/route/v1/driving/${origen[1]},${origen[0]};${destino[1]},${destino[0]}?overview=full&geometries=geojson`;
       const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
@@ -1797,6 +1932,7 @@ const NavegacionActivaScreen = ({ ruta, userPos, onFinalizar, onCancelar, darkMo
       if (data.routes?.[0]) {
         const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
         setRoutePoints(coords);
+        if (currentPos) hablar("Ruta actualizada");
       } else {
         setRoutePoints(prev => prev.length > 0 ? prev : buildFallbackRoute(origen, destino));
       }
@@ -1804,8 +1940,9 @@ const NavegacionActivaScreen = ({ ruta, userPos, onFinalizar, onCancelar, darkMo
       setRoutePoints(prev => prev.length > 0 ? prev : buildFallbackRoute(origen, destino));
     } finally {
       setCargandoRuta(false);
+      setTimeout(() => setRecalculando(false), 2000);
     }
-  }, [userPos, ruta.destinoCoords]);
+  }, [userPos, ruta.destinoCoords, hablar]);
 
   useEffect(() => {
     fetchRoute();
@@ -1911,7 +2048,7 @@ const NavegacionActivaScreen = ({ ruta, userPos, onFinalizar, onCancelar, darkMo
 
       {/* BARRA SUPERIOR — instrucción actual (Waze Mode) */}
       <div className="fixed top-0 left-0 right-0 bg-[#1A1A2E] text-white px-6 pt-12 pb-6 z-[4000] shadow-2xl animate-slide-down border-b border-white/5">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 mb-4">
           <div className="w-16 h-16 bg-[#00C896] rounded-[24px] flex items-center justify-center shrink-0 shadow-xl shadow-green-500/40">
             <Navigation size={32} strokeWidth={2.5} className="text-white" />
           </div>
@@ -1931,6 +2068,24 @@ const NavegacionActivaScreen = ({ ruta, userPos, onFinalizar, onCancelar, darkMo
           </button>
         </div>
 
+        {/* Controles de Instrucción (Skip/Back) */}
+        <div className="flex gap-2 mb-4">
+          <button
+            disabled={instruccionIdx === 0}
+            onClick={() => setInstruccionIdx(i => i - 1)}
+            className="flex-1 py-2 bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-20"
+          >
+            Anterior
+          </button>
+          <button
+            disabled={instruccionIdx === ruta.instrucciones.length - 1}
+            onClick={() => setInstruccionIdx(i => i + 1)}
+            className="flex-1 py-2 bg-[#00C896]/20 text-[#00C896] border border-[#00C896]/30 rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-20"
+          >
+            Saltar
+          </button>
+        </div>
+
         {/* Barra de progreso de pasos */}
         <div className="flex gap-1">
           {ruta.instrucciones.map((_, i) => (
@@ -1947,6 +2102,11 @@ const NavegacionActivaScreen = ({ ruta, userPos, onFinalizar, onCancelar, darkMo
 
       {/* MAPA FULLSCREEN con la ruta dibujada */}
       <div className="flex-1 relative min-h-0">
+        {recalculando && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[5000] bg-[#FFD93D] text-[#1A1A2E] px-4 py-2 rounded-full font-black text-xs shadow-2xl animate-bounce border-2 border-white flex items-center gap-2">
+            <RefreshCcw size={14} className="animate-spin" /> Recalculando...
+          </div>
+        )}
         {cargandoRuta ? (
           <div className="absolute inset-0 bg-slate-800 flex flex-col items-center justify-center gap-3">
             <div className="w-10 h-10 border-4 border-[#00C896] border-t-transparent rounded-full animate-spin" />
@@ -2083,7 +2243,7 @@ export default function RutaVerde() {
   const [activeTab, setActiveTab] = useState('inicio');
   const [stats, setStats] = useState({ points: 0, co2Total: 0, kmTotal: 0, rutasCount: 0 });
   const [toast, setToast] = useState(null);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
   const [logoClicks, setLogoClicks] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
   const [redeeming, setRedeeming] = useState(null);
@@ -2103,14 +2263,14 @@ export default function RutaVerde() {
     window.addEventListener('offline', handleOffline);
 
     const timer = setTimeout(() => setLoading(false), 2000);
-    const savedUser = storage.get('rv_user');
-    const savedStats = storage.get('rv_stats');
+    const savedUser = safeStorage.get('rv_user');
+    const savedStats = safeStorage.get('rv_stats');
     if (savedStats) setStats(savedStats);
-    const savedDark = storage.get('rv_dark');
+    const savedDark = safeStorage.get('rv_dark');
     if (savedUser && savedUser.name) {
       setUser(savedUser); setOnboardingComplete(true);
     }
-    if (savedDark === true) setDarkMode(true);
+    if (savedDark === false) setDarkMode(false);
     return () => {
       clearTimeout(timer);
       window.removeEventListener('online', handleOnline);
@@ -2119,7 +2279,7 @@ export default function RutaVerde() {
   }, []);
 
   useEffect(() => {
-    storage.set('rv_dark', darkMode);
+    safeStorage.set('rv_dark', darkMode);
     if (darkMode) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
   }, [darkMode]);
@@ -2146,7 +2306,7 @@ export default function RutaVerde() {
       rutasCount: stats.rutasCount + 1
     };
     setStats(newStats);
-    storage.set('rv_stats', newStats);
+    safeStorage.set('rv_stats', newStats);
     setNavegacionActiva(false);
     setRutaActiva(null);
     setDestCoords(null);
@@ -2181,15 +2341,16 @@ export default function RutaVerde() {
   };
 
   const confirmRedeem = () => {
+    if (!redeeming) return;
     trackEvent('Gamification', 'redeem_reward', redeeming.title, redeeming.cost);
-    const newStats = { ...stats, points: stats.points - redeeming.cost };
+    const newStats = { ...stats, points: (stats?.points || 0) - redeeming.cost };
     setStats(newStats);
-    storage.set('rv_stats', newStats);
+    safeStorage.set('rv_stats', newStats);
     setRedeeming(null);
     showToast("¡Canjeado con éxito! 🎉");
   };
 
-  const handleLogout = () => { storage.clear(); window.location.reload(); };
+  const handleLogout = () => { safeStorage.clear(); window.location.reload(); };
 
   if (loading) return (
     <div className="fixed inset-0 bg-[#1A1A2E] flex flex-col items-center justify-center p-10 z-[1000] text-white">
@@ -2244,7 +2405,10 @@ export default function RutaVerde() {
             />
             <p className="text-center text-[10px] font-bold text-gray-400">Únete a los {47 + (Math.floor(Date.now() / 86400000) % 30)} usuarios que ya cuidan Santiago 🌿</p>
             <div className="space-y-4">
-              <Button fullWidth onClick={() => { storage.set('rv_user', user); setOnboardingComplete(true); }} disabled={!user.name} className="py-6 text-xl shadow-2xl">Comenzar Aventura</Button>
+              <Button fullWidth onClick={() => {
+                safeStorage.set('rv_user', user);
+                setTimeout(() => setOnboardingComplete(true), 100);
+              }} disabled={!user.name} className="py-6 text-xl shadow-2xl">Comenzar Aventura</Button>
             </div>
           </div>
         )}
@@ -2263,7 +2427,7 @@ export default function RutaVerde() {
           darkMode={darkMode}
         />
       )}
-      <div className={`min-h-screen bg-[#F0FFF8] dark:bg-slate-950 text-[#1A1A2E] dark:text-white font-['Inter'] selection:bg-[#00C896] selection:text-white transition-colors duration-500`}>
+      <div className={`min-h-screen bg-[#0D1117] text-white font-['Inter'] selection:bg-[#00C896] selection:text-white transition-colors duration-500`}>
         {!isOnline && (
           <div className="fixed top-0 left-0 right-0 z-[10000] bg-red-500 text-white text-[10px] font-black uppercase tracking-[0.2em] py-2 text-center animate-slide-down">
             Estás en modo offline. Algunas funciones pueden no estar disponibles.
