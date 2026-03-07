@@ -50,6 +50,10 @@ const Badge = ({ children, className = "" }) => (
   </span>
 );
 
+const Skeleton = ({ className }) => (
+  <div className={`animate-pulse bg-slate-200 dark:bg-slate-800 rounded ${className}`} />
+);
+
 const storage = {
   get: (key, fallback = null) => {
     try {
