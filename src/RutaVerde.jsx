@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, Suspense, lazy, useCallback } from 'react';
+import { GoogleMap, useJsApiLoader, Autocomplete, DirectionsService, DirectionsRenderer, Marker, Polyline } from '@react-google-maps/api';
 import {
   Home, Map as MapIcon, Milestone, Award, User, Search, ArrowLeftRight,
   Leaf, Star, Zap, Navigation, Bell, ChevronRight, CheckCircle2,
@@ -360,222 +361,152 @@ const CityMap = ({
   isNavigating = false,
   travelMode = 'DRIVING'
 }) => {
-  const { pos, permiso } = useGeolocalizacion();
-  const mapRef = useRef(null);
-  const googleMap = useRef(null);
-  const searchInputRef = useRef(null);
-  const markersRef = useRef({ user: null, dest: null, others: [] });
-  const polylinesRef = useRef([]);
-  const directionsRenderer = useRef(null);
+  const { pos } = useGeolocalizacion();
+  const [map, setMap] = useState(null);
+  const [autocomplete, setAutocomplete] = useState(null);
+  const [directions, setDirections] = useState(null);
+  const [heading, setHeading] = useState(0);
+  const lastPosRef = useRef(null);
 
-  // Initialize Map
-  useEffect(() => {
-    if (typeof google === 'undefined' || !mapRef.current) return;
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_KEY || "YOUR_GOOGLE_MAPS_API_KEY",
+    libraries: ['places', 'geometry', 'drawing']
+  });
 
-    googleMap.current = new google.maps.Map(mapRef.current, {
-      center: { lat: pos[0], lng: pos[1] },
-      zoom: 14,
-      styles: darkMode ? darkMapStyles : [],
-      disableDefaultUI: true,
-      tilt: 0,
-      mapId: '90f87356969d10e5' // Example Map ID for 3D
-    });
+  const onAutocompleteLoad = (autocompleteInstance) => setAutocomplete(autocompleteInstance);
 
-    directionsRenderer.current = new google.maps.DirectionsRenderer({
-      map: googleMap.current,
-      suppressMarkers: true,
-      polylineOptions: { strokeColor: "#00C896", strokeWeight: 6 }
-    });
-
-    // Autocomplete
-    const autocomplete = new google.maps.places.Autocomplete(searchInputRef.current, {
-      componentRestrictions: { country: "cl" },
-      fields: ["geometry", "name"]
-    });
-
-    autocomplete.addListener("place_changed", () => {
+  const onPlaceChanged = () => {
+    if (autocomplete) {
       const place = autocomplete.getPlace();
-      if (!place.geometry) return;
+      if (place.geometry) {
+        const coords = [place.geometry.location.lat(), place.geometry.location.lng()];
+        if (onSearchSelect) onSearchSelect(coords, place.name);
+        map.panTo(place.geometry.location);
+      }
+    }
+  };
 
-      const coords = [place.geometry.location.lat(), place.geometry.location.lng()];
-      if (onSearchSelect) onSearchSelect(coords, place.name);
-
-      googleMap.current.panTo(place.geometry.location);
-      if (markersRef.current.dest) markersRef.current.dest.setMap(null);
-      markersRef.current.dest = new google.maps.Marker({
-        position: place.geometry.location,
-        map: googleMap.current,
-        animation: google.maps.Animation.DROP,
-        icon: getMarkerIcon('destination')
-      });
-    });
-  }, [darkMode]);
-
-  // Update User Marker & Camera
   useEffect(() => {
-    if (!googleMap.current) return;
-    const userLatLng = { lat: pos[0], lng: pos[1] };
+    if (map && isNavigating) {
+      const userLatLng = { lat: pos[0], lng: pos[1] };
+      map.setCenter(userLatLng);
+      map.setZoom(18);
+      map.setTilt(45);
 
-    if (!markersRef.current.user) {
-      markersRef.current.user = new google.maps.Marker({
-        position: userLatLng,
-        map: googleMap.current,
-        icon: getMarkerIcon('user')
-      });
-    } else {
-      markersRef.current.user.setPosition(userLatLng);
-    }
-
-    if (isNavigating) {
-      googleMap.current.setCenter(userLatLng);
-      googleMap.current.setZoom(18);
-      googleMap.current.setTilt(45);
-    }
-  }, [pos, isNavigating]);
-
-  // Port Transit Layers to Google Maps
-  useEffect(() => {
-    if (!googleMap.current) return;
-
-    // Clear previous extra markers/lines
-    markersRef.current.others.forEach(m => m.setMap(null));
-    markersRef.current.others = [];
-    polylinesRef.current.forEach(p => p.setMap(null));
-    polylinesRef.current = [];
-
-    if (showMetro) {
-      METRO_LINES.forEach(line => {
-        const path = line.coords.map(c => ({ lat: c[0], lng: c[1] }));
-        const poly = new google.maps.Polyline({
-          path,
-          geodesic: true,
-          strokeColor: line.color,
-          strokeOpacity: 0.6,
-          strokeWeight: 4,
-          map: googleMap.current
-        });
-        polylinesRef.current.push(poly);
-      });
-    }
-
-    if (showBici) {
-      BICI_STATIONS.forEach(s => {
-        const marker = new google.maps.Marker({
-          position: { lat: s.pos[0], lng: s.pos[1] },
-          map: googleMap.current,
-          icon: getMarkerIcon('bici'),
-          title: s.name
-        });
-        markersRef.current.others.push(marker);
-      });
-    }
-
-    if (showScooter) {
-      SCOOTER_ZONES.forEach(s => {
-        const marker = new google.maps.Marker({
-          position: { lat: s.pos[0], lng: s.pos[1] },
-          map: googleMap.current,
-          icon: getMarkerIcon('scooter'),
-          title: s.tipo
-        });
-        markersRef.current.others.push(marker);
-      });
-    }
-
-    if (modoTransporte === 'micro') {
-      MICRO_STOPS.forEach(s => {
-        const marker = new google.maps.Marker({
-          position: { lat: s.pos[0], lng: s.pos[1] },
-          map: googleMap.current,
-          icon: { ...getMarkerIcon('info'), fillColor: '#F59E0B' },
-          title: s.name
-        });
-        markersRef.current.others.push(marker);
-      });
-    }
-  }, [showMetro, showBici, showScooter, modoTransporte, darkMode]);
-
-  const lastRecalculatePos = useRef(null);
-
-  const calculateRoute = useCallback(() => {
-    if (!googleMap.current || !destination) return;
-    const destLatLng = { lat: destination[0], lng: destination[1] };
-    const originLatLng = { lat: pos[0], lng: pos[1] };
-
-    const ds = new google.maps.DirectionsService();
-    ds.route({
-      origin: originLatLng,
-      destination: destLatLng,
-      travelMode: google.maps.TravelMode[travelMode]
-    }, (result, status) => {
-      if (status === "OK") {
-        directionsRenderer.current.setDirections(result);
-        lastRecalculatePos.current = originLatLng;
-        const leg = result.routes[0].legs[0];
-        if (onRouteUpdate) {
-          onRouteUpdate({
-            distance: leg.distance.text,
-            duration: leg.duration.text,
-            distanceVal: leg.distance.value,
-            durationVal: leg.duration.value,
-            steps: leg.steps
-          });
+      if (lastPosRef.current) {
+        const prev = new google.maps.LatLng(lastPosRef.current[0], lastPosRef.current[1]);
+        const curr = new google.maps.LatLng(pos[0], pos[1]);
+        const newHeading = google.maps.geometry.spherical.computeHeading(prev, curr);
+        if (Math.abs(newHeading - heading) > 10) {
+           setHeading(newHeading);
+           map.setHeading(newHeading);
         }
       }
-    });
-  }, [destination, travelMode, pos, onRouteUpdate]);
+      lastPosRef.current = pos;
+    }
+  }, [map, pos, isNavigating]);
 
-  // Initial call and Auto-recalculate (Off-route > 50m)
+  // Recalculate if deviation > 50m
   useEffect(() => {
-    if (!destination) {
-      if (directionsRenderer.current) directionsRenderer.current.setDirections({ routes: [] });
-      return;
+    if (!isNavigating || !directions || !directions.routes[0]) return;
+    const path = directions.routes[0].overview_path;
+    const userPos = new google.maps.LatLng(pos[0], pos[1]);
+    const poly = new google.maps.Polyline({ path });
+    const isOnEdge = google.maps.geometry.poly.isLocationOnEdge(userPos, poly, 50 / 111320);
+    if (!isOnEdge) {
+      console.log("Off-route detected. Recalculating...");
+      setDirections(null);
     }
+  }, [pos, isNavigating, directions]);
 
-    const directions = directionsRenderer.current.getDirections();
-    if (!directions || !directions.routes[0]) {
-      calculateRoute();
-    } else {
-      const path = directions.routes[0].overview_path;
-      let minDistance = Infinity;
-      const userLatLng = new google.maps.LatLng(pos[0], pos[1]);
-      for (let i = 0; i < path.length; i++) {
-        const d = google.maps.geometry.spherical.computeDistanceBetween(userLatLng, path[i]);
-        if (d < minDistance) minDistance = d;
-      }
-      if (minDistance > 50) {
-        console.log("Off-route detected (>50m). Recalculating...");
-        calculateRoute();
-      }
-    }
-
-    const destLatLng = { lat: destination[0], lng: destination[1] };
-    if (markersRef.current.dest) {
-      markersRef.current.dest.setPosition(destLatLng);
-    } else {
-      markersRef.current.dest = new google.maps.Marker({
-        position: destLatLng,
-        map: googleMap.current,
-        animation: google.maps.Animation.DROP,
-        icon: getMarkerIcon('destination')
-      });
-    }
-  }, [destination, pos, calculateRoute]);
+  if (!isLoaded) return <Skeleton className="w-full h-full" />;
 
   return (
     <div className={`relative w-full h-full ${className}`}>
       <div className="absolute top-3 left-3 right-3 z-50">
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl flex items-center gap-2 px-4 py-3 border border-gray-200 dark:border-slate-700">
-          <Search size={16} className="text-[#00C896]" />
-          <input
-            ref={searchInputRef}
-            type="text"
-            placeholder="¿A dónde vas?"
-            className="bg-transparent flex-1 text-sm font-bold outline-none dark:text-white"
-          />
-        </div>
+        <Autocomplete onLoad={onAutocompleteLoad} onPlaceChanged={onPlaceChanged}>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl flex items-center gap-2 px-4 py-3 border border-gray-200 dark:border-slate-700">
+            <Search size={16} className="text-[#00C896]" />
+            <input
+              type="text"
+              placeholder="¿A dónde vas?"
+              className="bg-transparent flex-1 text-sm font-bold outline-none dark:text-white"
+            />
+          </div>
+        </Autocomplete>
       </div>
-      <div ref={mapRef} className="w-full h-full" />
+
+      <GoogleMap
+        mapContainerStyle={{ width: '100%', height: '100%' }}
+        center={{ lat: pos[0], lng: pos[1] }}
+        zoom={14}
+        onLoad={mapInstance => setMap(mapInstance)}
+        options={{
+          styles: darkMode ? darkMapStyles : [],
+          disableDefaultUI: true,
+          mapId: '90f87356969d10e5'
+        }}
+      >
+        <Marker position={{ lat: pos[0], lng: pos[1] }} icon={getMarkerIcon('user')} />
+
+        {destination && (
+          <Marker
+            position={{ lat: destination[0], lng: destination[1] }}
+            icon={getMarkerIcon('destination')}
+            animation={google.maps.Animation.DROP}
+          />
+        )}
+
+        {destination && (
+          <DirectionsService
+            options={{
+              destination: { lat: destination[0], lng: destination[1] },
+              origin: { lat: pos[0], lng: pos[1] },
+              travelMode: travelMode
+            }}
+            callback={(res, status) => {
+              if (status === 'OK' && !directions) {
+                setDirections(res);
+                if (onRouteUpdate) {
+                  const leg = res.routes[0].legs[0];
+                  onRouteUpdate({
+                    distance: leg.distance.text,
+                    duration: leg.duration.text,
+                    steps: leg.steps
+                  });
+                }
+              }
+            }}
+          />
+        )}
+
+        {directions && (
+          <DirectionsRenderer
+            options={{
+              directions: directions,
+              suppressMarkers: true,
+              polylineOptions: { strokeColor: "#00C896", strokeWeight: 6 }
+            }}
+          />
+        )}
+
+        {/* Transit Layers */}
+        {showMetro && METRO_LINES.map(line => (
+          <Polyline
+            key={line.name}
+            path={line.coords.map(c => ({ lat: c[0], lng: c[1] }))}
+            options={{ strokeColor: line.color, strokeOpacity: 0.6, strokeWeight: 4 }}
+          />
+        ))}
+
+        {showBici && BICI_STATIONS.map(s => (
+          <Marker key={s.id} position={{ lat: s.pos[0], lng: s.pos[1] }} icon={getMarkerIcon('bici')} />
+        ))}
+
+        {showScooter && SCOOTER_ZONES.map(s => (
+          <Marker key={s.id} position={{ lat: s.pos[0], lng: s.pos[1] }} icon={getMarkerIcon('scooter')} />
+        ))}
+      </GoogleMap>
     </div>
   );
 };
@@ -1066,7 +997,7 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
 
   return (
     <div className="h-full flex flex-col -mx-5 -mt-8 pb-32 animate-fade-in relative">
-      <div className="flex-grow relative h-[40vh] min-h-[250px] leaflet-container-wrapper">
+      <div className="flex-grow relative h-[40vh] min-h-[250px] map-wrapper">
         <CityMap
           destination={coords}
           darkMode={darkMode}
@@ -1207,7 +1138,7 @@ const LiveMapComponent = ({ darkMode, onNavigateToRutas }) => {
 
   return (
     <div className="h-full -mx-5 -mt-8 flex flex-col relative overflow-hidden">
-      <div className="flex-grow relative h-full leaflet-container-wrapper">
+      <div className="flex-grow relative h-full map-wrapper">
         <CityMap
           showMetro={layers.metro}
           showBici={layers.bici}
@@ -1250,8 +1181,8 @@ const LiveMapComponent = ({ darkMode, onNavigateToRutas }) => {
                   </p>
                 </div>
               </div>
-              <Button fullWidth onClick={startNavigation} className="py-5 shadow-green-500/40">
-                <Navigation size={22} fill="white" /> INICIAR RUTA
+              <Button fullWidth onClick={startNavigation} className="py-5 shadow-green-500/40 uppercase tracking-widest font-black">
+                <Navigation size={22} fill="white" /> INICIAR NAVEGACIÓN
               </Button>
             </div>
           </div>
@@ -1659,12 +1590,11 @@ const ProfileComponent = ({ user, stats, onLogout, darkMode, setDarkMode }) => {
 
 const NavegacionActivaScreen = ({ ruta, userPos, onFinalizar, onCancelar, darkMode }) => {
   const [instr, setInstr] = useState("Iniciando navegación...");
+  const [showBanner, setShowBanner] = useState(true);
   const { pos } = useGeolocalizacion();
 
   const handleRouteUpdate = useCallback((data) => {
     if (data.steps && data.steps.length > 0) {
-      // Logic to find current instruction based on user position could be more complex,
-      // here we just take the first one that is meaningful.
       const nextStep = data.steps[0].instructions.replace(/<[^>]*>?/gm, '');
       setInstr(nextStep);
     }
@@ -1672,22 +1602,32 @@ const NavegacionActivaScreen = ({ ruta, userPos, onFinalizar, onCancelar, darkMo
 
   return (
     <div className="fixed inset-0 z-[3000] flex flex-col">
-      <div className="bg-[#1A1A2E] text-white px-6 pt-12 pb-6 shadow-2xl z-50">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-[#00C896] rounded-2xl flex items-center justify-center animate-pulse">
-              <Navigation size={24} />
+      {showBanner && (
+        <div className="bg-[#1A1A2E] text-white px-6 pt-12 pb-6 shadow-2xl z-50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-[#00C896] rounded-2xl flex items-center justify-center animate-pulse">
+                <Navigation size={24} />
+              </div>
+              <div className="flex-1">
+                <p className="text-[#00C896] text-[10px] font-black uppercase tracking-widest">Siguiente Maniobra</p>
+                <h3 className="font-black text-lg leading-tight">{instr}</h3>
+              </div>
             </div>
-            <div>
-              <p className="text-[#00C896] text-[10px] font-black uppercase tracking-widest">Siguiente Maniobra</p>
-              <h3 className="font-black text-lg leading-tight">{instr}</h3>
-            </div>
+            <button onClick={() => setShowBanner(false)} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center ml-4 shrink-0">
+              <X size={18} />
+            </button>
           </div>
-          <button onClick={onCancelar} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
-            <X size={20} />
-          </button>
         </div>
-      </div>
+      )}
+      {!showBanner && (
+        <button
+          onClick={() => setShowBanner(true)}
+          className="absolute top-12 left-6 z-50 bg-[#1A1A2E] text-white p-3 rounded-2xl shadow-xl border border-white/10"
+        >
+          <Navigation size={20} />
+        </button>
+      )}
 
       <div className="flex-1">
         <CityMap
@@ -2014,7 +1954,7 @@ export default function RutaVerde() {
           </div>
 
           <div className="hidden lg:block flex-grow bg-[#F0FFF8] dark:bg-slate-950 p-10 overflow-hidden relative">
-            <div className="h-full rounded-[60px] overflow-hidden border-[16px] border-white dark:border-slate-800 shadow-2xl relative transition-colors duration-500 leaflet-container-wrapper">
+            <div className="h-full rounded-[60px] overflow-hidden border-[16px] border-white dark:border-slate-800 shadow-2xl relative transition-colors duration-500 map-wrapper">
               <CityMap city={user.city} darkMode={darkMode} alertasCoords={alertas.filter(a => a.lat && a.lon)} />
             </div>
           </div>
@@ -2025,8 +1965,7 @@ export default function RutaVerde() {
           body { font-family: 'Inter', sans-serif; overflow: hidden; }
           h1, h2, h3, h4, .font-black { font-family: 'Plus Jakarta Sans', sans-serif; }
           .no-scrollbar::-webkit-scrollbar { display: none; }
-          .leaflet-container { width: 100%; height: 100%; z-index: 1; }
-          .leaflet-container-wrapper { isolation: isolate; }
+          .map-wrapper { width: 100%; height: 100%; z-index: 1; isolation: isolate; }
           @keyframes slide-down { from { transform: translate(-50%, -100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
           @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
           @keyframes slide-up { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
