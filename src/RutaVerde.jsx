@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, Suspense, lazy, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import {
   Home, Map as MapIcon, Milestone, Award, User, Search, ArrowLeftRight,
   Leaf, Star, Zap, Navigation, Bell, ChevronRight, CheckCircle2,
@@ -9,6 +10,63 @@ import {
   Wind, MapPin, Layers, Coffee, Ticket, Footprints, ShieldCheck, QrCode,
   Eye, Trophy
 } from 'lucide-react';
+
+// --- UI COMPONENTS (Base) ---
+
+const Button = ({ children, onClick, variant = 'primary', className = "", fullWidth = false, disabled = false, loading = false }) => {
+  const variants = {
+    primary: "bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/30",
+    secondary: "bg-[#1A1A2E] text-white",
+    ghost: "bg-transparent text-[#4B5563] dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800",
+    outline: "border-2 border-green-600 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/10"
+  };
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled || loading}
+      className={`px-6 py-4 rounded-2xl font-black transition-all active:scale-95 flex items-center justify-center gap-2 ${variants[variant]} ${fullWidth ? 'w-full' : ''} ${(disabled || loading) ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
+    >
+      {loading ? (
+        <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+      ) : children}
+    </button>
+  );
+};
+
+const Input = React.forwardRef(({ className = "", ...props }, ref) => (
+  <input
+    ref={ref}
+    className={`w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all ${className}`}
+    {...props}
+  />
+));
+
+const Card = ({ children, className = "", delay = 0 }) => (
+  <div
+    style={{ animationDelay: `${delay}ms` }}
+    className={`bg-white dark:bg-slate-900 rounded-3xl shadow-xl shadow-green-900/5 p-5 border border-white/20 dark:border-slate-800 hover:scale-[1.01] transition-all duration-300 animate-slide-up fill-mode-forwards ${className}`}
+  >
+    {children}
+  </div>
+);
+
+const Badge = ({ children, className = "", color = "green" }) => {
+  const colors = {
+    green: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+    blue: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+    yellow: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+    red: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+  };
+  return (
+    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${colors[color]} ${className}`}>
+      {children}
+    </span>
+  );
+};
+
+const Skeleton = ({ className = "" }) => (
+  <div className={`animate-pulse bg-gray-200 dark:bg-slate-800 rounded-xl ${className}`}></div>
+);
 
 // --- UTILS & HOOKS (Inlined) ---
 
@@ -257,6 +315,14 @@ function useTrafficAlerts(refreshIntervalMs = 120000) {
 
 // --- CONFIGURACIÓN DE MAPA (LEAFLET) ---
 
+// Fix de Iconos de Leaflet para producción
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
 const customIcons = {
   user: L.divIcon({
     className: 'custom-div-icon',
@@ -306,7 +372,7 @@ const iconIncidente = (severity) => L.divIcon({
 
 // Coordenadas reales estaciones Metro de Santiago (fuente: Metro S.A. / OSM)
 const METRO_LINES = [
-  { name: 'L1', color: '#FF0000', weight: 6, coords: [
+  { name: 'L1', color: '#E30613', weight: 6, coords: [
     [-33.4258,-70.6580],[-33.4259,-70.6556],[-33.4265,-70.6519], // San Pablo→Neptuno→Pajaritos
     [-33.4270,-70.6481],[-33.4278,-70.6441],[-33.4290,-70.6404], // Pudahuel→Las Rejas→Ecuador
     [-33.4300,-70.6366],[-33.4312,-70.6321],[-33.4315,-70.6277], // San Alberto H→U de Santiago→Estación Central
@@ -316,7 +382,7 @@ const METRO_LINES = [
     [-33.4378,-70.5837],[-33.4345,-70.5767],[-33.4315,-70.5694], // Pedro de Valdivia→Los Leones→Tobalaba(L4)
     [-33.4280,-70.5618],[-33.4246,-70.5552],[-33.4208,-70.5484]  // Manquehue→Hernando de Aguirre→Escuela Militar
   ]},
-  { name: 'L2', color: '#FFD700', weight: 6, coords: [
+  { name: 'L2', color: '#F7941E', weight: 6, coords: [
     [-33.3693,-70.6392],[-33.3750,-70.6389],[-33.3820,-70.6388], // Cal y Canto→Puente Cal y Canto→Patronato
     [-33.3888,-70.6386],[-33.3960,-70.6384],[-33.4030,-70.6390], // Cerro Blanco→Cementerio→Einstein
     [-33.4100,-70.6396],[-33.4163,-70.6408],[-33.4230,-70.6420], // Dorsal→Franklin→El Llano
@@ -325,7 +391,7 @@ const METRO_LINES = [
     [-33.4630,-70.6470],[-33.4700,-70.6474],[-33.4760,-70.6478], // Pedro Aguirre Cerda→Lo Espejo→Central
     [-33.4820,-70.6482],[-33.4880,-70.6486],[-33.4940,-70.6490]  // Lo Prado→Nos→La Cisterna
   ]},
-  { name: 'L4', color: '#0055A4', weight: 6, coords: [
+  { name: 'L4', color: '#007A33', weight: 6, coords: [
     [-33.3800,-70.5700],[-33.3860,-70.5740],[-33.3930,-70.5780], // Tobalaba Norte
     [-33.3990,-70.5810],[-33.4050,-70.5830],[-33.4110,-70.5840], // El Golf→Alcántara→Escuela Militar
     [-33.4180,-70.5818],[-33.4250,-70.5764],[-33.4320,-70.5704], // Manquehue→Hernando de Aguirre→Tobalaba
@@ -334,17 +400,22 @@ const METRO_LINES = [
     [-33.4780,-70.6250],[-33.4850,-70.6310],[-33.4920,-70.6370], // Trinidad→San Ramón→La Cisterna
     [-33.5020,-70.6460],[-33.5120,-70.6500],[-33.5200,-70.6530]  // Hospital El Pino
   ]},
-  { name: 'L4A', color: '#0055A4', weight: 6, dashArray: '8,4', coords: [
+  { name: 'L4A', color: '#78BE20', weight: 6, coords: [
     [-33.4920,-70.6370],[-33.4980,-70.6480],[-33.5050,-70.6580], // La Cisterna→Lo Blanco
     [-33.5120,-70.6650],[-33.5190,-70.6720]                      // La Granja→Santa Rosa
   ]},
-  { name: 'L5', color: '#008000', weight: 6, coords: [
+  { name: 'L5', color: '#00A1DE', weight: 6, coords: [
     [-33.4480,-70.7280],[-33.4481,-70.7200],[-33.4483,-70.7120], // Pudahuel→Barrancas
     [-33.4485,-70.7040],[-33.4487,-70.6960],[-33.4489,-70.6880], // Bello→Blanqueado
     [-33.4490,-70.6800],[-33.4490,-70.6720],[-33.4490,-70.6640], // Cerrillos→Lo Espejo
     [-33.4490,-70.6511],[-33.4450,-70.6430],[-33.4404,-70.6012], // Quinta Normal→Cumming→Santa Ana
     [-33.4376,-70.6131],[-33.4340,-70.6260],[-33.4310,-70.6380], // Bellavista→La Florida
     [-33.4280,-70.6500],[-33.4250,-70.6600],[-33.4220,-70.6700]  // Mirador→Bellavista de la Florida
+  ]},
+  { name: 'L3', color: '#632323', weight: 6, coords: [
+    [-33.3650,-70.6850],[-33.3750,-70.6780],[-33.3850,-70.6710], // Los Libertadores→Cardenal Caro→Vivaceta
+    [-33.3950,-70.6640],[-33.4050,-70.6570],[-33.4150,-70.6500], // Conchalí→Plaza Chacabuco→Hospitales
+    [-33.4250,-70.6430],[-33.4350,-70.6360],[-33.4450,-70.6290]  // Puente Cal y Canto→Plaza de Armas→Universidad de Chile
   ]},
   { name: 'L6', color: '#9400D3', weight: 6, coords: [
     [-33.3900,-70.6460],[-33.3960,-70.6380],[-33.4020,-70.6290], // Cerro Navia→Neptuno
@@ -458,7 +529,7 @@ const CityMap = ({
     const prev = useRef(null);
     useEffect(() => {
       if (dest && JSON.stringify(dest) !== JSON.stringify(prev.current)) {
-        map.setView(dest, 15, { animate: true });
+        map.flyTo(dest, 15, { animate: true, duration: 1.5 });
         prev.current = dest;
       }
     }, [dest]);
@@ -491,13 +562,13 @@ const CityMap = ({
             ? <div className="w-4 h-4 border-2 border-[#00C896] border-t-transparent rounded-full animate-spin shrink-0" />
             : <Search size={16} className="text-[#00C896] shrink-0" />
           }
-          <input
+          <Input
             ref={searchRef}
             type="text"
             placeholder="¿A dónde vas?"
             value={mapQuery}
             onChange={e => handleMapSearch(e.target.value)}
-            className="bg-transparent flex-1 text-sm font-bold text-gray-900 dark:text-white placeholder:text-gray-400 placeholder:font-normal outline-none"
+            className="!border-none !shadow-none !bg-transparent !p-0 font-bold text-sm text-gray-900 dark:text-white"
           />
           {mapQuery.length > 0 && (
             <button
@@ -602,15 +673,15 @@ const CityMap = ({
             key={s.id}
             position={s.pos}
             icon={L.divIcon({
-              className: '',
-              html: `<div style="
-                background:${modoTransporte==='bici'?'#00C896':'#3B82F6'};
+              className: 'custom-div-icon',
+              html: `<div class="transition-all duration-300 flex items-center justify-center text-white" style="
+                background:${modoTransporte==='bici'?'#10b981':'#3b82f6'};
                 border:3px solid white;border-radius:50%;
-                width:${modoTransporte==='bici'?26:18}px;height:${modoTransporte==='bici'?26:18}px;
-                display:flex;align-items:center;justify-content:center;font-size:${modoTransporte==='bici'?13:10}px;
-                box-shadow:0 2px 8px rgba(0,0,0,0.25)${modoTransporte==='bici'?',0 0 0 5px rgba(0,200,150,0.2)':''};">🚴</div>`,
-              iconSize: [modoTransporte==='bici'?26:18, modoTransporte==='bici'?26:18],
-              iconAnchor: [modoTransporte==='bici'?13:9, modoTransporte==='bici'?13:9]
+                width:${modoTransporte==='bici'?32:22}px;height:${modoTransporte==='bici'?32:22}px;
+                font-size:${modoTransporte==='bici'?16:12}px;
+                box-shadow:0 4px 12px rgba(0,0,0,0.3)${modoTransporte==='bici'?',0 0 0 6px rgba(16,185,129,0.3)':''};">🚴</div>`,
+              iconSize: [modoTransporte==='bici'?32:22, modoTransporte==='bici'?32:22],
+              iconAnchor: [modoTransporte==='bici'?16:11, modoTransporte==='bici'?16:11]
             })}
           >
             <Popup>
@@ -727,10 +798,6 @@ const CSSIllustration = ({ type }) => {
   return null;
 };
 
-const Skeleton = ({ className }) => (
-  <div className={`animate-pulse bg-gray-200 dark:bg-slate-800 rounded-3xl ${className}`}></div>
-);
-
 const CountUp = ({ end, duration = 2000, decimals = 0 }) => {
   const [count, setCount] = useState(0);
   useEffect(() => {
@@ -745,15 +812,6 @@ const CountUp = ({ end, duration = 2000, decimals = 0 }) => {
   }, [end, duration]);
   return <span>{decimals > 0 ? count.toFixed(decimals) : Math.floor(count)}</span>;
 };
-
-const Card = ({ children, className = "", delay = 0 }) => (
-  <div
-    style={{ animationDelay: `${delay}ms` }}
-    className={`bg-white dark:bg-slate-900 rounded-3xl shadow-xl shadow-green-900/5 p-5 border border-white/20 dark:border-slate-800 hover:scale-[1.01] transition-all duration-300 animate-slide-up fill-mode-forwards ${className}`}
-  >
-    {children}
-  </div>
-);
 
 const ConfettiEffect = ({ onComplete }) => {
   const [pieces, setPieces] = useState([]);
@@ -790,26 +848,6 @@ const ConfettiEffect = ({ onComplete }) => {
         />
       ))}
     </div>
-  );
-};
-
-const Button = ({ children, onClick, variant = 'primary', className = "", fullWidth = false, disabled = false, loading = false }) => {
-  const variants = {
-    primary: "bg-gradient-to-r from-[#00C896] to-[#00A87E] text-white shadow-lg shadow-green-500/30 hover:shadow-green-500/50",
-    secondary: "bg-[#1A1A2E] text-white",
-    ghost: "bg-transparent text-[#4B5563] dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800",
-    outline: "border-2 border-[#00C896] text-[#00A87E] hover:bg-green-50 dark:hover:bg-green-900/10"
-  };
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled || loading}
-      className={`px-6 py-4 rounded-2xl font-black transition-all active:scale-95 flex items-center justify-center gap-2 ${variants[variant]} ${fullWidth ? 'w-full' : ''} ${(disabled || loading) ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
-    >
-      {loading ? (
-        <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-      ) : children}
-    </button>
   );
 };
 
@@ -902,12 +940,12 @@ const HomeComponent = ({ user, onNavigate, stats, darkMode, alertas, alertasCarg
         <div className="space-y-3 relative">
           <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800/50 rounded-2xl border border-gray-100 dark:border-slate-700 focus-within:border-[#00C896] transition-all">
             <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-            <input
+            <Input
               type="text"
               placeholder="¿Desde dónde?"
               value={from}
               onChange={(e) => setFrom(e.target.value)}
-              className="bg-transparent w-full focus:outline-none text-[#0D1B2A] dark:text-white font-bold placeholder:text-gray-400 dark:placeholder:text-slate-600"
+              className="!border-none !shadow-none !bg-transparent !p-0 font-bold text-[#0D1B2A] dark:text-white"
             />
           </div>
 
@@ -924,13 +962,13 @@ const HomeComponent = ({ user, onNavigate, stats, darkMode, alertas, alertasCarg
 
           <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800/50 rounded-2xl border border-gray-100 dark:border-slate-700 focus-within:border-[#00C896] transition-all relative">
             <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            <input
+            <Input
               type="text"
               placeholder="¿A dónde?"
               value={search}
               onChange={(e) => handleSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && onSearchSubmit()}
-              className="bg-transparent w-full focus:outline-none text-[#0D1B2A] dark:text-white font-bold placeholder:text-gray-400 dark:placeholder:text-slate-600"
+              className="!border-none !shadow-none !bg-transparent !p-0 font-bold text-[#0D1B2A] dark:text-white"
             />
             {suggestions.length > 0 && (
               <div className="absolute top-full left-0 right-0 bg-white dark:bg-slate-800 shadow-2xl rounded-2xl mt-2 z-[1000] border border-gray-100 dark:border-slate-700 overflow-hidden">
@@ -1067,6 +1105,7 @@ const HomeComponent = ({ user, onNavigate, stats, darkMode, alertas, alertasCarg
 const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
   const [loading, setLoading] = useState(true);
   const [coords, setCoords] = useState(destination);
+  const { pos: userPos } = useGeolocalizacion();
 
   useEffect(() => {
     setCoords(destination);
@@ -1086,32 +1125,57 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
 
   // Modos ordenados por prioridad ecológica (Ruta Verde primero)
   const MODOS = [
-    { id: 'caminata', label: 'A pie', emoji: '🚶', color: '#00C896', co2Factor: 0, costeFijo: 0 },
-    { id: 'bici', label: 'Bicicleta', emoji: '🚴', color: '#3B82F6', co2Factor: 0, costeFijo: 350 },
-    { id: 'scooter', label: 'Scooter', emoji: '🛴', color: '#06B6D4', co2Factor: 0.015, costeFijo: 400 },
-    { id: 'metro', label: 'Metro', emoji: '🚇', color: '#FF0000', co2Factor: 0.03, costeFijo: 780 },
-    { id: 'micro', label: 'Micro', emoji: '🚌', color: '#F59E0B', co2Factor: 0.068, costeFijo: 800 },
-    { id: 'moto', label: 'Moto', emoji: '🏍️', color: '#8B5CF6', co2Factor: 0.085, costeFijo: 0 },
-    { id: 'uber', label: 'Uber', emoji: '🚗', color: '#1A1A2E', co2Factor: 0.21, costeFijo: 2800 },
-    { id: 'auto', label: 'Auto', emoji: '🚙', color: '#EF4444', co2Factor: 0.21, costeFijo: 1500 },
-    { id: 'compartido', label: 'Compartido', emoji: '🤝', color: '#EC4899', co2Factor: 0.1, costeFijo: 1200 },
+    { id: 'caminata', label: 'A pie', emoji: '🚶', color: '#00C896', co2Factor: 0, costeFijo: 0, osrmProfile: 'foot' },
+    { id: 'bici', label: 'Bicicleta', emoji: '🚴', color: '#3B82F6', co2Factor: 0, costeFijo: 350, osrmProfile: 'cycling' },
+    { id: 'metro', label: 'Metro', emoji: '🚇', color: '#FF0000', co2Factor: 0.03, costeFijo: 780, osrmProfile: 'driving' },
+    { id: 'scooter', label: 'Scooter', emoji: '🛴', color: '#06B6D4', co2Factor: 0.015, costeFijo: 400, osrmProfile: 'driving' },
+    { id: 'micro', label: 'Micro', emoji: '🚌', color: '#F59E0B', co2Factor: 0.068, costeFijo: 800, osrmProfile: 'driving' },
+    { id: 'moto', label: 'Moto', emoji: '🏍️', color: '#8B5CF6', co2Factor: 0.085, costeFijo: 0, osrmProfile: 'driving' },
+    { id: 'uber', label: 'Uber', emoji: '🚗', color: '#1A1A2E', co2Factor: 0.21, costeFijo: 2800, osrmProfile: 'driving' },
+    { id: 'auto', label: 'Auto', emoji: '🚙', color: '#EF4444', co2Factor: 0.21, costeFijo: 1500, osrmProfile: 'driving' },
+    { id: 'compartido', label: 'Compartido', emoji: '🤝', color: '#EC4899', co2Factor: 0.1, costeFijo: 1200, osrmProfile: 'driving' },
   ];
 
   const DIST_KM = 5.2; // distancia estimada de la ruta
 
+  const [routeDetails, setRouteDetails] = useState({});
+
+  useEffect(() => {
+    if (!userPos || !coords) return;
+    MODOS.slice(0, 3).forEach(async (m) => {
+      try {
+        const profile = m.osrmProfile || 'driving';
+        const url = `https://router.project-osrm.org/route/v1/${profile}/${userPos[1]},${userPos[0]};${coords[1]},${coords[0]}?overview=false`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.routes?.[0]) {
+          const { distance, duration } = data.routes[0];
+          setRouteDetails(prev => ({
+            ...prev,
+            [m.id]: {
+              distKm: distance / 1000,
+              timeMin: Math.round(duration / 60)
+            }
+          }));
+        }
+      } catch (e) { console.error(e); }
+    });
+  }, [userPos, coords]);
+
   const baseRoutes = MODOS.map(m => {
-    const co2 = parseFloat((m.co2Factor * DIST_KM).toFixed(3));
-    const co2Evitado = parseFloat((Math.max(0, 0.21 - m.co2Factor) * DIST_KM).toFixed(3));
+    const details = routeDetails[m.id] || { distKm: DIST_KM, timeMin: 35 };
+    const dKm = details.distKm;
+    const co2 = parseFloat((m.co2Factor * dKm).toFixed(3));
+    const co2Evitado = parseFloat((Math.max(0, 0.21 - m.co2Factor) * dKm).toFixed(3));
     const co2Level = Math.round((m.co2Factor / 0.21) * 100);
-    const tiempos = { caminata: 65, bici: 22, scooter: 18, metro: 40, micro: 45, moto: 20, uber: 25, auto: 28, compartido: 30 };
-    const pts = Math.floor(co2Evitado * 100 + DIST_KM * 10);
+    const pts = Math.floor(co2Evitado * 100 + dKm * 10);
     return {
       id: m.id,
       title: m.label.toUpperCase(),
       sub: m.label,
       medio: m.id,
-      distanciaKm: DIST_KM,
-      time: tiempos[m.id] || 35,
+      distanciaKm: dKm,
+      time: details.timeMin,
       cost: m.costeFijo,
       co2, co2Evitado, co2Level,
       color: '',
@@ -1699,39 +1763,80 @@ const NavegacionActivaScreen = ({ ruta, userPos, onFinalizar, onCancelar, darkMo
   const [iniciado, setIniciado] = useState(Date.now());
 
   // 1. Obtener ruta real con OSRM (gratuito, sin API key)
-  useEffect(() => {
-    const fetchRoute = async () => {
-      const origen = userPos;
-      const destino = ruta.destinoCoords || [userPos[0] + 0.025, userPos[1] + 0.032];
-      try {
-        const url = `https://router.project-osrm.org/route/v1/driving/${origen[1]},${origen[0]};${destino[1]},${destino[0]}?overview=full&geometries=geojson`;
-        const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
-        const data = await res.json();
-        if (data.routes?.[0]) {
-          const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-          setRoutePoints(coords);
-        } else {
-          setRoutePoints(buildFallbackRoute(origen, destino));
-        }
-      } catch {
-        setRoutePoints(buildFallbackRoute(origen, destino));
-      } finally {
-        setCargandoRuta(false);
+  const fetchRoute = useCallback(async (currentPos) => {
+    const origen = currentPos || userPos;
+    const destino = ruta.destinoCoords || [userPos[0] + 0.025, userPos[1] + 0.032];
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${origen[1]},${origen[0]};${destino[1]},${destino[0]}?overview=full&geometries=geojson`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      const data = await res.json();
+      if (data.routes?.[0]) {
+        const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+        setRoutePoints(coords);
+      } else {
+        setRoutePoints(prev => prev.length > 0 ? prev : buildFallbackRoute(origen, destino));
       }
-    };
-    fetchRoute();
-  }, []);
+    } catch {
+      setRoutePoints(prev => prev.length > 0 ? prev : buildFallbackRoute(origen, destino));
+    } finally {
+      setCargandoRuta(false);
+    }
+  }, [userPos, ruta.destinoCoords]);
 
-  // 2. GPS watchPosition — seguimiento real
+  useEffect(() => {
+    fetchRoute();
+  }, [fetchRoute]);
+
+  // 2. GPS watchPosition — seguimiento real y recálculo silencioso
   useEffect(() => {
     if (!navigator.geolocation) return;
     const id = navigator.geolocation.watchPosition(
-      (pos) => setPosActual([pos.coords.latitude, pos.coords.longitude]),
+      (pos) => {
+        const newPos = [pos.coords.latitude, pos.coords.longitude];
+        setPosActual(newPos);
+
+        // Silent Recalculation: si el usuario está a >40m de la ruta
+        if (routePoints.length > 0) {
+          const isOffRoute = isUserOffRoute(newPos, routePoints, 40);
+          if (isOffRoute) {
+            console.log("Recalculando ruta silenciosamente...");
+            fetchRoute(newPos);
+          }
+        }
+      },
       () => {},
       { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
     );
     return () => navigator.geolocation.clearWatch(id);
+  }, [routePoints, fetchRoute]);
+
+
+  const getDistanceInMeters = useCallback((lat1, lon1, lat2, lon2) => {
+    const R = 6371e3; // Earth radius in meters
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
   }, []);
+
+  // Optimized distance check: only check against every 5th point if route is long
+  const isUserOffRoute = useCallback((pos, points, thresholdMeters) => {
+    let minDistance = Infinity;
+    const step = points.length > 50 ? 5 : 1;
+    for (let i = 0; i < points.length; i += step) {
+      const d = getDistanceInMeters(pos[0], pos[1], points[i][0], points[i][1]);
+      if (d < minDistance) minDistance = d;
+      if (minDistance < thresholdMeters) return false; // Early exit
+    }
+    return minDistance > thresholdMeters;
+  }, [getDistanceInMeters]);
 
   // 3. Countdown tiempo y distancia (cada 30s)
   useEffect(() => {
@@ -1780,25 +1885,25 @@ const NavegacionActivaScreen = ({ ruta, userPos, onFinalizar, onCancelar, darkMo
   return (
     <div className="fixed inset-0 z-[3000] flex flex-col bg-[#1A1A2E]">
 
-      {/* BARRA SUPERIOR — instrucción actual */}
-      <div className="bg-[#1A1A2E] text-white px-5 pt-10 pb-4 z-10 shrink-0">
-        <div className="flex items-start gap-3 mb-3">
-          <div className="w-12 h-12 bg-[#00C896] rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-green-500/30">
-            <Navigation size={20} className="text-white" />
+      {/* BARRA SUPERIOR — instrucción actual (Waze Mode) */}
+      <div className="fixed top-0 left-0 right-0 bg-[#1A1A2E] text-white px-6 pt-12 pb-6 z-[4000] shadow-2xl animate-slide-down border-b border-white/5">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 bg-[#00C896] rounded-[24px] flex items-center justify-center shrink-0 shadow-xl shadow-green-500/40">
+            <Navigation size={32} strokeWidth={2.5} className="text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-widest text-[#00C896] mb-0.5">
-              Paso {instruccionIdx + 1} / {ruta.instrucciones.length}
+            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#00C896] mb-1">
+              Paso {instruccionIdx + 1} / {ruta.instrucciones.length} · Siguiente Instrucción
             </p>
-            <p className="font-black text-sm leading-snug text-white">
+            <h2 className="text-xl font-black leading-tight text-white truncate">
               {ruta.instrucciones[instruccionIdx]}
-            </p>
+            </h2>
           </div>
           <button
             onClick={onCancelar}
-            className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center shrink-0 hover:bg-white/20 transition-all"
+            className="w-14 h-14 bg-white/10 rounded-[20px] flex items-center justify-center shrink-0 active:scale-90 transition-all hover:bg-white/20 border border-white/10"
           >
-            <X size={18} className="text-white" />
+            <X size={28} strokeWidth={3} className="text-white" />
           </button>
         </div>
 
