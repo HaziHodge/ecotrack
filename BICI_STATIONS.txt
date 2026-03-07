@@ -1,0 +1,12 @@
+const BICI_STATIONS = [
+  { id: 1, pos: [-33.4369, -70.6509], name: "BipBici Plaza de Armas",    direccion: "Av. Libertador B. O'Higgins 1059",   disponibles: 8  },
+  { id: 2, pos: [-33.4399, -70.5894], name: "BipBici Tobalaba",          direccion: "Av. Providencia con Av. Tobalaba",    disponibles: 5  },
+  { id: 3, pos: [-33.4552, -70.6826], name: "BipBici Estación Central",  direccion: "Av. Libertador B. O'Higgins 3322",   disponibles: 12 },
+  { id: 4, pos: [-33.4281, -70.6077], name: "BipBici Bellas Artes",      direccion: "Av. Bernardo O'Higgins 651",         disponibles: 3  },
+  { id: 5, pos: [-33.4196, -70.6045], name: "BipBici Manuel Montt",      direccion: "Av. Providencia 1111",               disponibles: 7  },
+  { id: 6, pos: [-33.4404, -70.6012], name: "BipBici Lastarria",         direccion: "José Victorino Lastarria 70",        disponibles: 4  },
+  { id: 7, pos: [-33.4209, -70.5487], name: "BipBici Escuela Militar",   direccion: "Av. Apoquindo con Manquehue",        disponibles: 9  },
+  { id: 8, pos: [-33.4249, -70.6348], name: "BipBici Barrio Italia",     direccion: "Av. Italia con Av. Condell",         disponibles: 6  },
+  { id: 9, pos: [-33.4380, -70.6540], name: "BipBici Bustamante",        direccion: "Av. Bustamante 52, Providencia",     disponibles: 11 },
+  { id: 10, pos: [-33.4160, -70.5966], name: "BipBici Los Leones",       direccion: "Av. Andrés Bello con Los Leones",    disponibles: 2  },
+];

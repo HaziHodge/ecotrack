@@ -1,0 +1,128 @@
+const ProfileComponent = ({ user, stats, onLogout, darkMode, setDarkMode }) => {
+  const [accessible, setAccessible] = useState(false);
+  const weeklyData = [12, 18, 15, 25, 30, 22, 28];
+  const maxVal = Math.max(...weeklyData);
+
+  const [showShareCard, setShowShareCard] = useState(false);
+  const ahorroEstimado = Math.round(stats.rutasCount * 1200);
+
+  const diasUsandoApp = Math.max(1, stats.rutasCount);
+  const miHuellaDiaria = (stats.co2Total / diasUsandoApp).toFixed(2);
+  const promedioSantiago = 2.5;
+  const porcentajeTuya = Math.min(100, Math.round((parseFloat(miHuellaDiaria) / promedioSantiago) * 100));
+  const ahorroPerc = Math.max(0, Math.round((1 - parseFloat(miHuellaDiaria) / promedioSantiago) * 100));
+
+  return (
+    <div className="space-y-8 pb-40 animate-fade-in pt-8">
+      <div className="flex flex-col items-center">
+        <div className="w-32 h-32 bg-gradient-to-tr from-[#00C896] to-[#00A87E] rounded-[48px] flex items-center justify-center text-white text-5xl font-black shadow-2xl relative">
+           {user.name[0]}
+           <div className="absolute -bottom-2 -right-2 bg-[#FFD93D] text-[#1A1A2E] p-2 rounded-2xl shadow-xl animate-bounce">
+              <Star size={20} fill="currentColor" />
+           </div>
+        </div>
+        <h2 className="mt-6 text-3xl font-black text-[#0D1B2A] dark:text-white tracking-tight">{user.name}</h2>
+        <p className="text-[#4B5563] dark:text-slate-400 font-black uppercase tracking-widest text-[10px]">{metricas.obtenerInsignia(stats.co2Total)} • {user.city}</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+         <Card className="text-center !p-4" delay={100}>
+            <p className="text-xl font-black text-[#00C896]">{stats.co2Total.toFixed(1)}kg</p>
+            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">CO₂ Ahorrado</p>
+         </Card>
+         <Card className="text-center !p-4" delay={200}>
+            <p className="text-xl font-black text-blue-500">{stats.rutasCount}</p>
+            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Viajes Públicos</p>
+         </Card>
+         <Card className="text-center !p-4" delay={300}>
+            <p className="text-xl font-black text-[#FFD93D]">{stats.kmTotal.toFixed(1)}km</p>
+            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Distancia Bici</p>
+         </Card>
+         <Card className="text-center !p-4" delay={400}>
+            <p className="text-xl font-black text-emerald-600">${ahorroEstimado.toLocaleString('es-CL')} CLP</p>
+            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Dinero Ahorrado</p>
+         </Card>
+      </div>
+
+      <div className="space-y-4">
+        <h2 className="text-xl font-black text-[#0D1B2A] dark:text-white tracking-tight">Impacto Semanal (kg CO₂)</h2>
+        <Card className="!p-6 h-48 flex items-end justify-between gap-2">
+           {weeklyData.map((v, i) => (
+             <div key={i} className="flex-grow flex flex-col items-center gap-2 h-full justify-end">
+                <div
+                  className="w-full bg-gradient-to-t from-[#00C896] to-emerald-400 rounded-t-lg transition-all duration-1000 animate-slide-up"
+                  style={{ height: `${(v / maxVal) * 100}%`, animationDelay: `${i * 0.1}s` }}
+                ></div>
+                <span className="text-[8px] font-black text-gray-400">{['L', 'M', 'M', 'J', 'V', 'S', 'D'][i]}</span>
+             </div>
+           ))}
+        </Card>
+      </div>
+
+      <div className="space-y-4">
+        <h2 className="text-xl font-black text-[#0D1B2A] dark:text-white tracking-tight">Mi huella vs Santiago</h2>
+        <Card className="space-y-4">
+           <div className="space-y-1.5">
+              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest"><span>Tú</span><span>{miHuellaDiaria} kg/día</span></div>
+              <div className="w-full h-3 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                 <div className="h-full bg-[#00C896] rounded-full" style={{ width: `${porcentajeTuya}%` }}></div>
+              </div>
+           </div>
+           <div className="space-y-1.5">
+              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest"><span>Promedio Santiago</span><span>{promedioSantiago} kg/día</span></div>
+              <div className="w-full h-3 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                 <div className="h-full bg-gray-300 dark:bg-slate-600 rounded-full w-[100%]"></div>
+              </div>
+           </div>
+           <p className="text-[10px] text-center font-bold text-gray-500 italic">"¡Estás un {ahorroPerc}% por debajo del promedio de Santiago!"</p>
+        </Card>
+      </div>
+
+      {showShareCard && (
+        <div className="fixed inset-0 bg-black/80 z-[6000] flex flex-col items-center justify-center p-8"
+             onClick={() => setShowShareCard(false)}>
+          <div className="w-80 bg-gradient-to-br from-[#1A1A2E] to-[#0d2e1e] rounded-[40px] p-8 text-center border border-[#00C896]/20 shadow-2xl">
+            <div className="w-16 h-16 bg-[#00C896] rounded-[20px] flex items-center justify-center mx-auto mb-4">
+              <Leaf size={32} fill="white" className="text-white" />
+            </div>
+            <p className="text-[#00C896] font-black text-xs uppercase tracking-widest mb-2">Este mes ahorré</p>
+            <p className="text-6xl font-black text-white">{stats.co2Total.toFixed(1)}</p>
+            <p className="text-[#00C896] font-black text-sm">kg de CO₂</p>
+            <p className="text-gray-400 text-xs mt-2">{metricas.generarComparativaViral(stats.co2Total)}</p>
+            <div className="mt-6 pt-4 border-t border-white/10">
+              <p className="text-white font-black text-sm">{user.name}</p>
+              <p className="text-gray-500 text-[10px] uppercase tracking-widest">
+                {metricas.obtenerInsignia(stats.co2Total)} • rutaverde-zeta.vercel.app
+              </p>
+            </div>
+          </div>
+          <p className="text-white/40 text-xs mt-6">Toca para cerrar · Haz screenshot para compartir</p>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        <Button variant="outline" fullWidth onClick={() => setShowShareCard(true)} className="mb-4">
+          📸 Compartir mi impacto
+        </Button>
+        <div className="flex items-center justify-between p-5 bg-white dark:bg-slate-900 rounded-[28px] border-2 border-gray-50 dark:border-slate-800 transition-all cursor-pointer shadow-sm hover:shadow-md" onClick={() => setDarkMode(!darkMode)}>
+          <div className="flex items-center gap-4">
+            <div className={`p-3 rounded-2xl ${darkMode ? 'bg-indigo-900 text-indigo-400' : 'bg-gray-50 text-gray-400'}`}><Smartphone size={20} /></div>
+            <span className="font-black text-[#0D1B2A] dark:text-white text-sm">Modo Oscuro</span>
+          </div>
+          <div className={`w-14 h-8 rounded-full p-1 transition-colors duration-500 ${darkMode ? 'bg-indigo-600' : 'bg-gray-200'}`}><div className={`w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-500 ${darkMode ? 'translate-x-6' : 'translate-x-0'}`}></div></div>
+        </div>
+
+        <Button variant="ghost" fullWidth onClick={onLogout} className="!text-[#FF6B6B] hover:bg-red-50 dark:hover:bg-red-900/10 !py-6 mt-4"><LogOut size={22} strokeWidth={3} /> Cerrar Sesión</Button>
+      </div>
+    </div>
+  );
+};
+
+const NavegacionActivaScreen = ({ ruta, userPos, onFinalizar, onCancelar, darkMode }) => {
+  const [instruccionIdx, setInstruccionIdx] = useState(0);
+  const [tiempoRestante, setTiempoRestante] = useState(ruta.time);
+  const [distanciaRestante, setDistanciaRestante] = useState(ruta.distanciaKm);
+  const [posActual, setPosActual] = useState(userPos);
+  const [routePoints, setRoutePoints] = useState([]);
+  const [cargandoRuta, setCargandoRuta] = useState(true);
+  const [iniciado, setIniciado] = useState(Date.now());
