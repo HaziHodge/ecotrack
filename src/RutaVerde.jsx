@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo, Suspense, lazy, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMap } from 'react-leaflet';
-import L from 'leaflet';
 import {
   Home, Map as MapIcon, Milestone, Award, User, Search, ArrowLeftRight,
   Leaf, Star, Zap, Navigation, Bell, ChevronRight, CheckCircle2,
@@ -44,38 +42,23 @@ const storage = {
 };
 
 /**
- * Hook para manejar la geolocalización con fallback a Santiago Centro
+ * Hook para manejar la geolocalización en tiempo real (Waze Style)
  */
 function useGeolocalizacion() {
   const [estado, setEstado] = useState({
     pos: [-33.4489, -70.6693], // Fallback: Santiago Centro
-    permiso: 'sin-solicitar',  // 'ok' | 'denegado' | 'sin-solicitar'
+    permiso: 'sin-solicitar',
     error: null
   });
 
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setEstado(prev => ({ ...prev, permiso: 'denegado', error: 'No soportado' }));
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setEstado({
-          pos: [position.coords.latitude, position.coords.longitude],
-          permiso: 'ok',
-          error: null
-        });
-      },
-      (error) => {
-        setEstado(prev => ({
-          ...prev,
-          permiso: 'denegado',
-          error: error.message
-        }));
-      },
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    if (!navigator.geolocation) return;
+    const watchId = navigator.geolocation.watchPosition(
+      (p) => setEstado({ pos: [p.coords.latitude, p.coords.longitude], permiso: 'ok', error: null }),
+      (e) => setEstado(prev => ({ ...prev, permiso: 'denegado', error: e.message })),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
+    return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
   return estado;
@@ -255,54 +238,28 @@ function useTrafficAlerts(refreshIntervalMs = 120000) {
  * Estética: Revolut + Citymapper + Duolingo.
  */
 
-// --- CONFIGURACIÓN DE MAPA (LEAFLET) ---
+// --- GOOGLE MAPS CONFIG & STYLES ---
 
-const customIcons = {
-  user: L.divIcon({
-    className: 'custom-div-icon',
-    html: `<div class="w-6 h-6 bg-blue-500 rounded-full border-2 border-white shadow-lg animate-pulse"></div>`,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12]
-  }),
-  bici: L.divIcon({
-    className: 'custom-div-icon',
-    html: `<div class="w-5 h-5 bg-[#60A5FA] rounded-full border-2 border-white shadow-md flex items-center justify-center text-white"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5.5 17.5 5-5 5 5"/><path d="m17.5 17.5-5-5-5-5"/></svg></div>`,
-    iconSize: [20, 20],
-    iconAnchor: [10, 10]
-  }),
-  scooter: L.divIcon({
-    className: 'custom-div-icon',
-    html: `<div class="w-4 h-4 bg-[#00C896] rounded-full border-2 border-white shadow-sm"></div>`,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8]
-  }),
-  alert: L.divIcon({
-    className: 'custom-div-icon',
-    html: `<div class="w-6 h-6 bg-[#FF6B6B] rounded-full border-2 border-white shadow-lg animate-ping"></div>`,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12]
-  }),
-  destination: L.divIcon({
-    className: 'custom-div-icon',
-    html: `<div class="relative"><div class="w-8 h-8 bg-[#FF6B6B] rounded-full border-4 border-white shadow-xl flex items-center justify-center text-white animate-bounce"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div></div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32]
-  })
+const darkMapStyles = [
+  { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] }
+];
+
+const getMarkerIcon = (type, severity = null) => {
+  if (typeof google === 'undefined') return {};
+  const colors = { user: '#3B82F6', bici: '#60A5FA', scooter: '#00C896', destination: '#EF4444', error: '#FF6B6B', warning: '#FFD93D', info: '#00C896' };
+  return {
+    path: google.maps.SymbolPath.CIRCLE,
+    fillColor: severity ? colors[severity] : colors[type] || '#9CA3AF',
+    fillOpacity: 1,
+    strokeWeight: 2,
+    strokeColor: '#FFFFFF',
+    scale: (type === 'destination' || type === 'user') ? 10 : 7
+  };
 };
-
-const iconIncidente = (severity) => L.divIcon({
-  className: 'custom-div-icon',
-  html: `<div style="
-    width:24px; height:24px; border-radius:50%;
-    background:${severity === 'error' ? '#FF6B6B' : severity === 'warning' ? '#FFD93D' : '#00C896'};
-    border: 2px solid white;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    display:flex; align-items:center; justify-content:center;
-    font-size:10px;
-  ">${severity === 'error' ? '⚠' : severity === 'warning' ? '~' : '✓'}</div>`,
-  iconSize: [24, 24],
-  iconAnchor: [12, 12]
-});
 
 // Coordenadas reales estaciones Metro de Santiago (fuente: Metro S.A. / OSM)
 const METRO_LINES = [
@@ -398,295 +355,227 @@ const CityMap = ({
   alertasCoords = [],
   modoTransporte = null,
   onSearchSelect = null,
-  routePreview = null,   // array de [lat,lng] para mostrar ruta preview en mapa
-  centerTrigger = 0,     // incrementar para centrar en usuario
+  onRouteUpdate = null,
+  centerTrigger = 0,
+  isNavigating = false,
+  travelMode = 'DRIVING'
 }) => {
   const { pos, permiso } = useGeolocalizacion();
-  const [tileError, setTileError] = useState(false);
-  const [mapQuery, setMapQuery] = useState('');
-  const [mapSuggestions, setMapSuggestions] = useState([]);
-  const [searchBusy, setSearchBusy] = useState(false);
-  const [localRoutePoints, setLocalRoutePoints] = useState([]);
-  const [fetchingRoute, setFetchingRoute] = useState(false);
-  const searchRef = useRef(null);
-  const destTrigger = useRef(0);
+  const mapRef = useRef(null);
+  const googleMap = useRef(null);
+  const searchInputRef = useRef(null);
+  const markersRef = useRef({ user: null, dest: null, others: [] });
+  const polylinesRef = useRef([]);
+  const directionsRenderer = useRef(null);
 
-  const mapUrl = darkMode
-    ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png';
+  // Initialize Map
+  useEffect(() => {
+    if (typeof google === 'undefined' || !mapRef.current) return;
 
-  // Fetch sugerencias Nominatim — debounced
-  const handleMapSearch = useCallback(async (q) => {
-    setMapQuery(q);
-    if (q.length < 3) { setMapSuggestions([]); return; }
-    setSearchBusy(true);
-    try {
-      const r = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q + ', Santiago, Chile')}&limit=5`,
-        { headers: { 'Accept-Language': 'es' } }
-      );
-      setMapSuggestions(await r.json());
-    } catch { setMapSuggestions([]); }
-    finally { setSearchBusy(false); }
-  }, []);
+    googleMap.current = new google.maps.Map(mapRef.current, {
+      center: { lat: pos[0], lng: pos[1] },
+      zoom: 14,
+      styles: darkMode ? darkMapStyles : [],
+      disableDefaultUI: true,
+      tilt: 0,
+      mapId: '90f87356969d10e5' // Example Map ID for 3D
+    });
 
-  // Cuando usuario selecciona sugerencia: fetch ruta OSRM
-  const handleSelectSuggestion = useCallback(async (s) => {
-    const destCoords = [parseFloat(s.lat), parseFloat(s.lon)];
-    const nombre = s.display_name.split(',')[0];
-    setMapQuery(nombre);
-    setMapSuggestions([]);
-    destTrigger.current += 1;
-    if (onSearchSelect) onSearchSelect(destCoords, nombre);
+    directionsRenderer.current = new google.maps.DirectionsRenderer({
+      map: googleMap.current,
+      suppressMarkers: true,
+      polylineOptions: { strokeColor: "#00C896", strokeWeight: 6 }
+    });
 
-    // Preview de ruta OSRM
-    setFetchingRoute(true);
-    try {
-      const url = `https://router.project-osrm.org/route/v1/driving/${pos[1]},${pos[0]};${s.lon},${s.lat}?overview=full&geometries=geojson`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.routes?.[0]) {
-        setLocalRoutePoints(data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]));
+    // Autocomplete
+    const autocomplete = new google.maps.places.Autocomplete(searchInputRef.current, {
+      componentRestrictions: { country: "cl" },
+      fields: ["geometry", "name"]
+    });
+
+    autocomplete.addListener("place_changed", () => {
+      const place = autocomplete.getPlace();
+      if (!place.geometry) return;
+
+      const coords = [place.geometry.location.lat(), place.geometry.location.lng()];
+      if (onSearchSelect) onSearchSelect(coords, place.name);
+
+      googleMap.current.panTo(place.geometry.location);
+      if (markersRef.current.dest) markersRef.current.dest.setMap(null);
+      markersRef.current.dest = new google.maps.Marker({
+        position: place.geometry.location,
+        map: googleMap.current,
+        animation: google.maps.Animation.DROP,
+        icon: getMarkerIcon('destination')
+      });
+    });
+  }, [darkMode]);
+
+  // Update User Marker & Camera
+  useEffect(() => {
+    if (!googleMap.current) return;
+    const userLatLng = { lat: pos[0], lng: pos[1] };
+
+    if (!markersRef.current.user) {
+      markersRef.current.user = new google.maps.Marker({
+        position: userLatLng,
+        map: googleMap.current,
+        icon: getMarkerIcon('user')
+      });
+    } else {
+      markersRef.current.user.setPosition(userLatLng);
+    }
+
+    if (isNavigating) {
+      googleMap.current.setCenter(userLatLng);
+      googleMap.current.setZoom(18);
+      googleMap.current.setTilt(45);
+    }
+  }, [pos, isNavigating]);
+
+  // Port Transit Layers to Google Maps
+  useEffect(() => {
+    if (!googleMap.current) return;
+
+    // Clear previous extra markers/lines
+    markersRef.current.others.forEach(m => m.setMap(null));
+    markersRef.current.others = [];
+    polylinesRef.current.forEach(p => p.setMap(null));
+    polylinesRef.current = [];
+
+    if (showMetro) {
+      METRO_LINES.forEach(line => {
+        const path = line.coords.map(c => ({ lat: c[0], lng: c[1] }));
+        const poly = new google.maps.Polyline({
+          path,
+          geodesic: true,
+          strokeColor: line.color,
+          strokeOpacity: 0.6,
+          strokeWeight: 4,
+          map: googleMap.current
+        });
+        polylinesRef.current.push(poly);
+      });
+    }
+
+    if (showBici) {
+      BICI_STATIONS.forEach(s => {
+        const marker = new google.maps.Marker({
+          position: { lat: s.pos[0], lng: s.pos[1] },
+          map: googleMap.current,
+          icon: getMarkerIcon('bici'),
+          title: s.name
+        });
+        markersRef.current.others.push(marker);
+      });
+    }
+
+    if (showScooter) {
+      SCOOTER_ZONES.forEach(s => {
+        const marker = new google.maps.Marker({
+          position: { lat: s.pos[0], lng: s.pos[1] },
+          map: googleMap.current,
+          icon: getMarkerIcon('scooter'),
+          title: s.tipo
+        });
+        markersRef.current.others.push(marker);
+      });
+    }
+
+    if (modoTransporte === 'micro') {
+      MICRO_STOPS.forEach(s => {
+        const marker = new google.maps.Marker({
+          position: { lat: s.pos[0], lng: s.pos[1] },
+          map: googleMap.current,
+          icon: { ...getMarkerIcon('info'), fillColor: '#F59E0B' },
+          title: s.name
+        });
+        markersRef.current.others.push(marker);
+      });
+    }
+  }, [showMetro, showBici, showScooter, modoTransporte, darkMode]);
+
+  const lastRecalculatePos = useRef(null);
+
+  const calculateRoute = useCallback(() => {
+    if (!googleMap.current || !destination) return;
+    const destLatLng = { lat: destination[0], lng: destination[1] };
+    const originLatLng = { lat: pos[0], lng: pos[1] };
+
+    const ds = new google.maps.DirectionsService();
+    ds.route({
+      origin: originLatLng,
+      destination: destLatLng,
+      travelMode: google.maps.TravelMode[travelMode]
+    }, (result, status) => {
+      if (status === "OK") {
+        directionsRenderer.current.setDirections(result);
+        lastRecalculatePos.current = originLatLng;
+        const leg = result.routes[0].legs[0];
+        if (onRouteUpdate) {
+          onRouteUpdate({
+            distance: leg.distance.text,
+            duration: leg.duration.text,
+            distanceVal: leg.distance.value,
+            durationVal: leg.duration.value,
+            steps: leg.steps
+          });
+        }
       }
-    } catch { setLocalRoutePoints([]); }
-    finally { setFetchingRoute(false); }
-  }, [pos, onSearchSelect]);
+    });
+  }, [destination, travelMode, pos, onRouteUpdate]);
 
-  // Solo re-centra cuando cambia destino (no en cada render)
-  const RecenterOnDest = ({ dest }) => {
-    const map = useMap();
-    const prev = useRef(null);
-    useEffect(() => {
-      if (dest && JSON.stringify(dest) !== JSON.stringify(prev.current)) {
-        map.setView(dest, 15, { animate: true });
-        prev.current = dest;
+  // Initial call and Auto-recalculate (Off-route > 50m)
+  useEffect(() => {
+    if (!destination) {
+      if (directionsRenderer.current) directionsRenderer.current.setDirections({ routes: [] });
+      return;
+    }
+
+    const directions = directionsRenderer.current.getDirections();
+    if (!directions || !directions.routes[0]) {
+      calculateRoute();
+    } else {
+      const path = directions.routes[0].overview_path;
+      let minDistance = Infinity;
+      const userLatLng = new google.maps.LatLng(pos[0], pos[1]);
+      for (let i = 0; i < path.length; i++) {
+        const d = google.maps.geometry.spherical.computeDistanceBetween(userLatLng, path[i]);
+        if (d < minDistance) minDistance = d;
       }
-    }, [dest]);
-    return null;
-  };
-
-  // Centrar en usuario — solo cuando se invoca explícitamente
-  const CenterOnUser = ({ trigger }) => {
-    const map = useMap();
-    const prev = useRef(0);
-    useEffect(() => {
-      if (trigger > prev.current) {
-        map.setView(pos, 16, { animate: true });
-        prev.current = trigger;
+      if (minDistance > 50) {
+        console.log("Off-route detected (>50m). Recalculating...");
+        calculateRoute();
       }
-    }, [trigger]);
-    return null;
-  };
+    }
 
-  const pts = routePreview || localRoutePoints;
+    const destLatLng = { lat: destination[0], lng: destination[1] };
+    if (markersRef.current.dest) {
+      markersRef.current.dest.setPosition(destLatLng);
+    } else {
+      markersRef.current.dest = new google.maps.Marker({
+        position: destLatLng,
+        map: googleMap.current,
+        animation: google.maps.Animation.DROP,
+        icon: getMarkerIcon('destination')
+      });
+    }
+  }, [destination, pos, calculateRoute]);
 
   return (
-    <div className={`relative bg-[#F8FAF9] dark:bg-slate-900 w-full h-full overflow-hidden ${className}`}>
-
-      {/* ── BUSCADOR ── z-[2000] para estar SOBRE todo lo demás */}
-      <div className="absolute top-3 left-3 right-3 z-[2000]">
-        <div className={`bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border flex items-center gap-2 px-4 py-3
-          ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
-          {searchBusy
-            ? <div className="w-4 h-4 border-2 border-[#00C896] border-t-transparent rounded-full animate-spin shrink-0" />
-            : <Search size={16} className="text-[#00C896] shrink-0" />
-          }
+    <div className={`relative w-full h-full ${className}`}>
+      <div className="absolute top-3 left-3 right-3 z-50">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl flex items-center gap-2 px-4 py-3 border border-gray-200 dark:border-slate-700">
+          <Search size={16} className="text-[#00C896]" />
           <input
-            ref={searchRef}
+            ref={searchInputRef}
             type="text"
             placeholder="¿A dónde vas?"
-            value={mapQuery}
-            onChange={e => handleMapSearch(e.target.value)}
-            className="bg-transparent flex-1 text-sm font-bold text-gray-900 dark:text-white placeholder:text-gray-400 placeholder:font-normal outline-none"
+            className="bg-transparent flex-1 text-sm font-bold outline-none dark:text-white"
           />
-          {mapQuery.length > 0 && (
-            <button
-              onClick={() => { setMapQuery(''); setMapSuggestions([]); setLocalRoutePoints([]); }}
-              className="text-gray-400 hover:text-gray-600 shrink-0"
-            >
-              <X size={14} />
-            </button>
-          )}
         </div>
-
-        {/* Sugerencias */}
-        {mapSuggestions.length > 0 && (
-          <div className="mt-1 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden">
-            {mapSuggestions.slice(0, 5).map((s, i) => (
-              <div
-                key={i}
-                onClick={() => handleSelectSuggestion(s)}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-green-50 dark:hover:bg-slate-700 cursor-pointer border-b border-gray-50 dark:border-slate-700 last:border-none transition-colors active:bg-green-100"
-              >
-                <MapPin size={14} className="text-[#00C896] shrink-0" />
-                <div className="min-w-0">
-                  <p className="font-bold text-xs text-gray-900 dark:text-white truncate">
-                    {s.display_name.split(',')[0]}
-                  </p>
-                  <p className="text-[10px] text-gray-400 truncate">
-                    {s.display_name.split(',').slice(1, 3).join(', ').trim()}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Cargando ruta preview */}
-        {fetchingRoute && (
-          <div className="mt-1 bg-white dark:bg-slate-800 rounded-xl px-4 py-2 shadow-lg border border-gray-100 dark:border-slate-700 flex items-center gap-2">
-            <div className="w-3 h-3 border-2 border-[#00C896] border-t-transparent rounded-full animate-spin" />
-            <span className="text-[10px] font-bold text-gray-500">Calculando ruta...</span>
-          </div>
-        )}
       </div>
-
-      {/* Botón centrar en usuario */}
-      <button
-        id="rvCenterTrigger"
-        onClick={() => {
-          destTrigger.current = 0;
-          // trigger CenterOnUser via incrementing centerTrigger if it was passed as prop,
-          // or handle locally if we want to force re-center
-          if (onSearchSelect) onSearchSelect(null, null); // clear destination to refocus
-        }}
-        className="absolute bottom-6 right-4 z-[1500] w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-2xl border border-gray-100 dark:border-slate-700 text-[#00C896] active:scale-95 transition-all"
-      >
-        <Locate size={20} />
-      </button>
-
-      {tileError && (
-        <div className="absolute inset-0 z-[3000] bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center p-8 text-center">
-          <Wind size={48} className="text-slate-400 mb-4 animate-pulse" />
-          <h3 className="font-black text-xl mb-2">Mapa no disponible</h3>
-          <p className="text-sm text-gray-500 mb-6">Sin conexión o error en el servicio de mapas.</p>
-          <button onClick={() => setTileError(false)} className="bg-[#00C896] text-white px-6 py-3 rounded-xl font-bold">Reintentar</button>
-        </div>
-      )}
-
-      <MapContainer
-        center={pos}
-        zoom={14}
-        scrollWheelZoom={true}
-        dragging={true}
-        className="w-full h-full"
-        zoomControl={false}
-      >
-        <TileLayer
-          attribution="© CARTO"
-          url={mapUrl}
-          eventHandlers={{ tileerror: () => setTileError(true) }}
-        />
-
-        <RecenterOnDest dest={destination} />
-        <CenterOnUser trigger={centerTrigger} />
-
-        {/* PREVIEW DE RUTA en el mapa */}
-        {pts.length > 1 && (
-          <>
-            <Polyline positions={pts} color="#1A1A2E" weight={10} opacity={0.2} />
-            <Polyline positions={pts} color="#00C896" weight={5} opacity={0.95} dashArray="none" />
-          </>
-        )}
-
-        {/* METRO — líneas reales */}
-        {showMetro && METRO_LINES.map(line => (
-          <React.Fragment key={line.name}>
-            <Polyline positions={line.coords} color={line.color} weight={line.weight || 5} opacity={modoTransporte === 'metro' ? 1 : 0.6} dashArray={line.dashArray || undefined} />
-          </React.Fragment>
-        ))}
-
-        {/* BICIS — estaciones reales BipBici */}
-        {(showBici || modoTransporte === 'bici') && BICI_STATIONS.map(s => (
-          <Marker
-            key={s.id}
-            position={s.pos}
-            icon={L.divIcon({
-              className: '',
-              html: `<div style="
-                background:${modoTransporte==='bici'?'#00C896':'#3B82F6'};
-                border:3px solid white;border-radius:50%;
-                width:${modoTransporte==='bici'?26:18}px;height:${modoTransporte==='bici'?26:18}px;
-                display:flex;align-items:center;justify-content:center;font-size:${modoTransporte==='bici'?13:10}px;
-                box-shadow:0 2px 8px rgba(0,0,0,0.25)${modoTransporte==='bici'?',0 0 0 5px rgba(0,200,150,0.2)':''};">🚴</div>`,
-              iconSize: [modoTransporte==='bici'?26:18, modoTransporte==='bici'?26:18],
-              iconAnchor: [modoTransporte==='bici'?13:9, modoTransporte==='bici'?13:9]
-            })}
-          >
-            <Popup>
-              <div style={{ minWidth: 160, padding: 8 }}>
-                <p style={{ fontWeight: 900, fontSize: 12, marginBottom: 4 }}>{s.name}</p>
-                <p style={{ color: '#00C896', fontWeight: 700, fontSize: 11 }}>🚴 {s.disponibles} bicis disponibles</p>
-                <p style={{ color: '#6B7280', fontSize: 10, marginTop: 2 }}>BipBici · Gratis primeros 30 min</p>
-                <p style={{ color: '#6B7280', fontSize: 10 }}>📍 {s.direccion}</p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-
-        {/* SCOOTERS — zonas reales Grin/Lime */}
-        {(showScooter || modoTransporte === 'scooter') && SCOOTER_ZONES.map(s => (
-          <Marker
-            key={s.id}
-            position={s.pos}
-            icon={L.divIcon({
-              className: '',
-              html: `<div style="
-                background:${modoTransporte==='scooter'?(s.tipo==='grin'?'#00C896':'#FFD700'):'#9CA3AF'};
-                border:3px solid white;border-radius:10px;
-                width:${modoTransporte==='scooter'?24:16}px;height:${modoTransporte==='scooter'?24:16}px;
-                display:flex;align-items:center;justify-content:center;font-size:${modoTransporte==='scooter'?12:9}px;
-                box-shadow:0 2px 8px rgba(0,0,0,0.2)${modoTransporte==='scooter'?',0 0 0 4px rgba(0,200,150,0.2)':''};">🛴</div>`,
-              iconSize: [24, 24], iconAnchor: [12, 12]
-            })}
-          >
-            <Popup>
-              <div style={{ minWidth: 150, padding: 8 }}>
-                <p style={{ fontWeight: 900, fontSize: 13 }}>{s.tipo === 'grin' ? '🟢 Grin' : '🟡 Lime'}</p>
-                <p style={{ fontSize: 11, color: '#374151', marginTop: 2 }}>{s.zona}</p>
-                <p style={{ fontSize: 10, color: '#6B7280' }}>📍 {s.direccion}</p>
-                <p style={{ color: '#00C896', fontWeight: 700, fontSize: 11, marginTop: 4 }}>~$90 CLP/min · app Grin/Lime</p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-
-        {/* PARADAS MICRO */}
-        {(modoTransporte === 'micro') && MICRO_STOPS.map(s => (
-          <Marker key={s.id} position={s.pos} icon={L.divIcon({
-            className: '',
-            html: `<div style="background:#F59E0B;border:3px solid white;border-radius:8px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,0.2),0 0 0 4px rgba(245,158,11,0.2);">🚌</div>`,
-            iconSize: [24, 24], iconAnchor: [12, 12]
-          })}>
-            <Popup>
-              <div style={{ minWidth: 150, padding: 8 }}>
-                <p style={{ fontWeight: 900, fontSize: 12 }}>{s.name}</p>
-                <p style={{ fontSize: 10, color: '#6B7280', marginTop: 2 }}>📍 {s.direccion}</p>
-                <p style={{ fontSize: 10, color: '#F59E0B', fontWeight: 700, marginTop: 4 }}>Líneas: {s.lineas.join(' · ')}</p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-
-        {/* USUARIO */}
-        <Marker position={pos} icon={customIcons.user} />
-
-        {/* DESTINO desde búsqueda en mapa */}
-        {destination && <Marker position={destination} icon={customIcons.destination} />}
-
-        {/* ALERTAS TRÁFICO */}
-        {alertasCoords.map(a => (
-          <Marker key={a.id} position={[a.lat, a.lon]} icon={iconIncidente(a.severity)}>
-            <Popup>
-              <div style={{ padding: 4 }}>
-                <p style={{ fontWeight: 700, fontSize: 12 }}>{a.emoji} {a.calle}</p>
-                <p style={{ fontSize: 10, color: '#6B7280', marginTop: 2 }}>{a.texto}</p>
-                {a.delay && <p style={{ fontSize: 9, color: '#EF4444', fontWeight: 700, marginTop: 4 }}>+{a.delay} min de retraso</p>}
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
+      <div ref={mapRef} className="w-full h-full" />
     </div>
   );
 };
@@ -1072,6 +961,8 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
     setCoords(destination);
   }, [destination]);
 
+  const [previewData, setPreviewData] = useState(null);
+
   const [selected, setSelected] = useState('bici');
   const [filter, setFilter] = useState('greener');
   const [starting, setStarting] = useState(false);
@@ -1147,7 +1038,11 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
   const handleStartRoute = () => {
     setStarting(true);
     trackEvent('Navigation', 'start_route', selected);
-    const rutaElegida = filteredRoutes.find(r => r.id === selected);
+    const rutaElegida = {
+      ...filteredRoutes.find(r => r.id === selected),
+      time: previewData?.duration || '?',
+      distanciaKm: previewData?.distance || '?'
+    };
     setTimeout(() => {
       setStarting(false);
       onStart(rutaElegida);
@@ -1172,7 +1067,12 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
   return (
     <div className="h-full flex flex-col -mx-5 -mt-8 pb-32 animate-fade-in relative">
       <div className="flex-grow relative h-[40vh] min-h-[250px] leaflet-container-wrapper">
-        <CityMap destination={coords} darkMode={darkMode} />
+        <CityMap
+          destination={coords}
+          darkMode={darkMode}
+          travelMode={selected === 'auto' ? 'DRIVING' : selected === 'bici' ? 'BICYCLING' : 'WALKING'}
+          onRouteUpdate={(data) => setPreviewData(data)}
+        />
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-t-[48px] shadow-2xl p-6 z-10 space-y-4 -mt-12 relative pb-32 lg:pb-8 border-t border-gray-100 dark:border-slate-800">
@@ -1243,16 +1143,17 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
 const LiveMapComponent = ({ darkMode, onNavigateToRutas }) => {
   const [layers, setLayers] = useState({ metro: true, bici: true, scooter: true });
   const [showAlerts, setShowAlerts] = useState(false);
-  const [modoFiltro, setModoFiltro] = useState(null);
+  const [modoFiltro, setModoFiltro] = useState('DRIVING');
   const [destSeleccionado, setDestSeleccionado] = useState(null);
+  const [previewData, setPreviewData] = useState(null);
+  const [isNavigating, setIsNavigating] = useState(false);
   const { alertas, cargando, ultimaActualizacion, refetch } = useTrafficAlerts();
   const user = useMemo(() => storage.get('rv_user', { city: 'Santiago' }), []);
 
   const MODOS_RAPIDOS = [
-    { id: 'bici', emoji: '🚴', label: 'Bici' },
-    { id: 'scooter', emoji: '🛴', label: 'Scooter' },
-    { id: 'metro', emoji: '🚇', label: 'Metro' },
-    { id: 'micro', emoji: '🚌', label: 'Micro' },
+    { id: 'DRIVING', emoji: '🚗', label: 'Auto' },
+    { id: 'BICYCLING', emoji: '🚴', label: 'Bici' },
+    { id: 'WALKING', emoji: '🚶', label: 'Pie' },
   ];
 
   // Contar alertas importantes para el badge
@@ -1262,30 +1163,97 @@ const LiveMapComponent = ({ darkMode, onNavigateToRutas }) => {
     ? ultimaActualizacion.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
     : null;
 
+  const startNavigation = () => {
+    setIsNavigating(true);
+    trackEvent('Navigation', 'start_waze_mode', modoFiltro);
+  };
+
+  if (isNavigating && destSeleccionado) {
+    const distKm = (previewData?.distanceVal || 0) / 1000;
+    const medio = modoFiltro === 'DRIVING' ? 'auto' : modoFiltro === 'BICYCLING' ? 'bici' : 'walk';
+    const co2Ev = metricas.calcularCO2Evitado(distKm, medio === 'walk' ? 'bici' : medio);
+    const pts = metricas.calcularPuntos(co2Ev, distKm);
+
+    return (
+      <NavegacionActivaScreen
+        ruta={{
+          destinoCoords: destSeleccionado,
+          time: previewData?.duration || '?',
+          distanciaKm: previewData?.distance || '?',
+          puntosNuevos: pts,
+          medio: medio,
+          co2Evitado: co2Ev
+        }}
+        onCancelar={() => setIsNavigating(false)}
+        onFinalizar={() => {
+          const ns = {
+            ...stats,
+            points: stats.points + pts,
+            co2Total: parseFloat((stats.co2Total + co2Ev).toFixed(3)),
+            kmTotal: parseFloat((stats.kmTotal + distKm).toFixed(2)),
+            rutasCount: stats.rutasCount + 1
+          };
+          setStats(ns);
+          storage.set('rv_stats', ns);
+          setIsNavigating(false);
+          setDestSeleccionado(null);
+          setPreviewData(null);
+          showToast(`🌱 +${pts} pts · ${co2Ev.toFixed(2)}kg CO2 evitado`);
+        }}
+        darkMode={darkMode}
+      />
+    );
+  }
+
   return (
     <div className="h-full -mx-5 -mt-8 flex flex-col relative overflow-hidden">
       <div className="flex-grow relative h-full leaflet-container-wrapper">
         <CityMap
-          showMetro={layers.metro || modoFiltro === 'metro'}
-          showBici={layers.bici || modoFiltro === 'bici'}
-          showScooter={layers.scooter || modoFiltro === 'scooter'}
+          showMetro={layers.metro}
+          showBici={layers.bici}
+          showScooter={layers.scooter}
           city={user.city}
           darkMode={darkMode}
           alertasCoords={alertas.filter(a => a.lat && a.lon)}
-          modoTransporte={modoFiltro}
+          travelMode={modoFiltro}
           destination={destSeleccionado}
-          onSearchSelect={(coords, nombre) => {
-            setDestSeleccionado(coords);
-          }}
+          onSearchSelect={(coords, nombre) => setDestSeleccionado(coords)}
+          onRouteUpdate={(data) => setPreviewData(data)}
         />
-        {destSeleccionado && (
-          <div className="absolute bottom-28 left-4 right-4 z-[1000]">
-            <button
-              onClick={() => { if (onNavigateToRutas) onNavigateToRutas(destSeleccionado); }}
-              className="w-full py-4 bg-[#00C896] text-white font-black text-sm rounded-2xl shadow-2xl flex items-center justify-center gap-2 active:scale-95 transition-all"
-            >
-              <Navigation size={18} /> Ver rutas hacia este destino
-            </button>
+
+        {destSeleccionado && previewData && (
+          <div className="absolute bottom-6 left-4 right-4 z-[1500] animate-slide-up">
+            <div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 shadow-2xl border border-gray-100 dark:border-slate-800">
+              {/* Transport Mode Selector inside Preview */}
+              <div className="flex gap-4 mb-6 justify-center border-b border-gray-50 dark:border-slate-800 pb-4">
+                {MODOS_RAPIDOS.map(m => (
+                  <button
+                    key={m.id}
+                    onClick={() => setModoFiltro(m.id)}
+                    className={`flex flex-col items-center gap-1 p-2 rounded-2xl transition-all ${modoFiltro === m.id ? 'bg-[#00C896] text-white scale-110 shadow-lg' : 'text-gray-400'}`}
+                  >
+                    <span className="text-xl">{m.emoji}</span>
+                    <span className="text-[8px] font-black uppercase">{m.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h4 className="font-black text-xl text-[#0D1B2A] dark:text-white">{previewData.duration}</h4>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{previewData.distance} • Ruta Verde</p>
+                </div>
+                <div className="bg-[#00C896]/10 px-3 py-1.5 rounded-full border border-[#00C896]/20">
+                  <p className="text-[10px] font-black text-[#00C896] flex items-center gap-1">
+                    <Leaf size={10} fill="currentColor" />
+                    {((previewData.distanceVal / 1000) * (0.21 - (modoFiltro === 'WALKING' ? 0 : modoFiltro === 'BICYCLING' ? 0 : 0.04))).toFixed(1)}kg CO2
+                  </p>
+                </div>
+              </div>
+              <Button fullWidth onClick={startNavigation} className="py-5 shadow-green-500/40">
+                <Navigation size={22} fill="white" /> INICIAR RUTA
+              </Button>
+            </div>
           </div>
         )}
 
@@ -1294,7 +1262,7 @@ const LiveMapComponent = ({ darkMode, onNavigateToRutas }) => {
           {MODOS_RAPIDOS.map(m => (
             <button
               key={m.id}
-              onClick={() => setModoFiltro(prev => prev === m.id ? null : m.id)}
+              onClick={() => setModoFiltro(m.id)}
               className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all border whitespace-nowrap flex items-center gap-1
                 ${modoFiltro === m.id
                   ? 'bg-[#00C896] text-white border-[#00C896]'
@@ -1690,241 +1658,65 @@ const ProfileComponent = ({ user, stats, onLogout, darkMode, setDarkMode }) => {
 };
 
 const NavegacionActivaScreen = ({ ruta, userPos, onFinalizar, onCancelar, darkMode }) => {
-  const [instruccionIdx, setInstruccionIdx] = useState(0);
-  const [tiempoRestante, setTiempoRestante] = useState(ruta.time);
-  const [distanciaRestante, setDistanciaRestante] = useState(ruta.distanciaKm);
-  const [posActual, setPosActual] = useState(userPos);
-  const [routePoints, setRoutePoints] = useState([]);
-  const [cargandoRuta, setCargandoRuta] = useState(true);
-  const [iniciado, setIniciado] = useState(Date.now());
+  const [instr, setInstr] = useState("Iniciando navegación...");
+  const { pos } = useGeolocalizacion();
 
-  // 1. Obtener ruta real con OSRM (gratuito, sin API key)
-  useEffect(() => {
-    const fetchRoute = async () => {
-      const origen = userPos;
-      const destino = ruta.destinoCoords || [userPos[0] + 0.025, userPos[1] + 0.032];
-      try {
-        const url = `https://router.project-osrm.org/route/v1/driving/${origen[1]},${origen[0]};${destino[1]},${destino[0]}?overview=full&geometries=geojson`;
-        const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
-        const data = await res.json();
-        if (data.routes?.[0]) {
-          const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-          setRoutePoints(coords);
-        } else {
-          setRoutePoints(buildFallbackRoute(origen, destino));
-        }
-      } catch {
-        setRoutePoints(buildFallbackRoute(origen, destino));
-      } finally {
-        setCargandoRuta(false);
-      }
-    };
-    fetchRoute();
+  const handleRouteUpdate = useCallback((data) => {
+    if (data.steps && data.steps.length > 0) {
+      // Logic to find current instruction based on user position could be more complex,
+      // here we just take the first one that is meaningful.
+      const nextStep = data.steps[0].instructions.replace(/<[^>]*>?/gm, '');
+      setInstr(nextStep);
+    }
   }, []);
-
-  // 2. GPS watchPosition — seguimiento real
-  useEffect(() => {
-    if (!navigator.geolocation) return;
-    const id = navigator.geolocation.watchPosition(
-      (pos) => setPosActual([pos.coords.latitude, pos.coords.longitude]),
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
-    );
-    return () => navigator.geolocation.clearWatch(id);
-  }, []);
-
-  // 3. Countdown tiempo y distancia (cada 30s)
-  useEffect(() => {
-    const iv = setInterval(() => {
-      setTiempoRestante(t => Math.max(0, t - 1));
-      setDistanciaRestante(d => Math.max(0, parseFloat((d - 0.05).toFixed(2))));
-    }, 30000);
-    return () => clearInterval(iv);
-  }, []);
-
-  // 4. Avanzar instrucciones automáticamente
-  useEffect(() => {
-    if (ruta.instrucciones.length <= 1) return;
-    const segPorPaso = (ruta.time * 60) / ruta.instrucciones.length;
-    const iv = setInterval(() => {
-      setInstruccionIdx(i => Math.min(i + 1, ruta.instrucciones.length - 1));
-    }, segPorPaso * 1000);
-    return () => clearInterval(iv);
-  }, [ruta]);
-
-  const esUltimoPaso = instruccionIdx === ruta.instrucciones.length - 1;
-  const progreso = Math.round(((ruta.distanciaKm - distanciaRestante) / ruta.distanciaKm) * 100);
-
-  const mapUrl = darkMode
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png';
-
-  const RecenterNav = ({ pos }) => {
-    const map = useMap();
-    useEffect(() => { map.setView(pos, 17, { animate: true }); }, [pos]);
-    return null;
-  };
-
-  const iconUsuarioNav = L.divIcon({
-    className: '',
-    html: `<div style="
-      width:20px;height:20px;
-      background:#3B82F6;
-      border:3px solid white;
-      border-radius:50%;
-      box-shadow:0 0 0 6px rgba(59,130,246,0.25);
-    "></div>`,
-    iconSize: [20, 20], iconAnchor: [10, 10]
-  });
 
   return (
-    <div className="fixed inset-0 z-[3000] flex flex-col bg-[#1A1A2E]">
-
-      {/* BARRA SUPERIOR — instrucción actual */}
-      <div className="bg-[#1A1A2E] text-white px-5 pt-10 pb-4 z-10 shrink-0">
-        <div className="flex items-start gap-3 mb-3">
-          <div className="w-12 h-12 bg-[#00C896] rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-green-500/30">
-            <Navigation size={20} className="text-white" />
+    <div className="fixed inset-0 z-[3000] flex flex-col">
+      <div className="bg-[#1A1A2E] text-white px-6 pt-12 pb-6 shadow-2xl z-50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-[#00C896] rounded-2xl flex items-center justify-center animate-pulse">
+              <Navigation size={24} />
+            </div>
+            <div>
+              <p className="text-[#00C896] text-[10px] font-black uppercase tracking-widest">Siguiente Maniobra</p>
+              <h3 className="font-black text-lg leading-tight">{instr}</h3>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-widest text-[#00C896] mb-0.5">
-              Paso {instruccionIdx + 1} / {ruta.instrucciones.length}
-            </p>
-            <p className="font-black text-sm leading-snug text-white">
-              {ruta.instrucciones[instruccionIdx]}
-            </p>
-          </div>
-          <button
-            onClick={onCancelar}
-            className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center shrink-0 hover:bg-white/20 transition-all"
-          >
-            <X size={18} className="text-white" />
+          <button onClick={onCancelar} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
+            <X size={20} />
           </button>
         </div>
-
-        {/* Barra de progreso de pasos */}
-        <div className="flex gap-1">
-          {ruta.instrucciones.map((_, i) => (
-            <div
-              key={i}
-              className={`h-1 flex-1 rounded-full transition-all duration-700 ${
-                i < instruccionIdx ? 'bg-[#00C896]' :
-                i === instruccionIdx ? 'bg-white' : 'bg-white/20'
-              }`}
-            />
-          ))}
-        </div>
       </div>
 
-      {/* MAPA FULLSCREEN con la ruta dibujada */}
-      <div className="flex-1 relative min-h-0">
-        {cargandoRuta ? (
-          <div className="absolute inset-0 bg-slate-800 flex flex-col items-center justify-center gap-3">
-            <div className="w-10 h-10 border-4 border-[#00C896] border-t-transparent rounded-full animate-spin" />
-            <p className="text-white text-sm font-bold">Calculando tu ruta...</p>
-          </div>
-        ) : (
-          <MapContainer
-            center={posActual}
-            zoom={17}
-            scrollWheelZoom={false}
-            zoomControl={false}
-            className="w-full h-full"
-          >
-            <TileLayer url={mapUrl} attribution="© CARTO" />
-            <RecenterNav pos={posActual} />
-
-            {/* LÍNEA DE RUTA */}
-            {routePoints.length > 0 && (
-              <>
-                {/* Sombra de la línea */}
-                <Polyline positions={routePoints} color="#1A1A2E" weight={10} opacity={0.3} />
-                {/* Línea principal */}
-                <Polyline positions={routePoints} color="#00C896" weight={6} opacity={0.95} />
-              </>
-            )}
-
-            {/* POSICIÓN USUARIO */}
-            <Marker position={posActual} icon={iconUsuarioNav} />
-
-            {/* DESTINO */}
-            {routePoints.length > 0 && (
-              <Marker
-                position={routePoints[routePoints.length - 1]}
-                icon={customIcons.destination}
-              >
-                <Popup><p className="font-bold text-xs">Tu destino</p></Popup>
-              </Marker>
-            )}
-          </MapContainer>
-        )}
-
-        {/* Botón zoom in/out */}
-        <div className="absolute bottom-4 right-4 z-[1000] flex flex-col gap-2">
-          <button className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg text-[#1A1A2E] font-black text-lg">+</button>
-          <button className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg text-[#1A1A2E] font-black text-lg">−</button>
-        </div>
+      <div className="flex-1">
+        <CityMap
+          isNavigating={true}
+          destination={ruta.destinoCoords}
+          travelMode={ruta.medio === 'auto' ? 'DRIVING' : ruta.medio === 'bici' ? 'BICYCLING' : 'WALKING'}
+          darkMode={darkMode}
+          onRouteUpdate={handleRouteUpdate}
+        />
       </div>
 
-      {/* PANEL INFERIOR — stats + botón finalizar */}
-      <div className="bg-white dark:bg-slate-900 rounded-t-[36px] px-5 pt-4 pb-8 shadow-2xl shrink-0">
-        <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
-
-        {/* Stats en vivo */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          <div className="bg-gray-50 dark:bg-slate-800 rounded-2xl p-3 text-center">
-            <p className="text-xl font-black text-[#1A1A2E] dark:text-white leading-none">{tiempoRestante}</p>
-            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">min rest.</p>
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-50">
+        <div className="flex items-center justify-between mb-6">
+          <div className="text-center">
+            <p className="text-2xl font-black">{ruta.time} min</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">Tiempo</p>
           </div>
-          <div className="bg-gray-50 dark:bg-slate-800 rounded-2xl p-3 text-center">
-            <p className="text-xl font-black text-[#00C896] leading-none">{distanciaRestante.toFixed(1)}</p>
-            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">km rest.</p>
+          <div className="text-center">
+            <p className="text-2xl font-black text-[#00C896]">{ruta.distanciaKm} km</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">Distancia</p>
           </div>
-          <div className="bg-gray-50 dark:bg-slate-800 rounded-2xl p-3 text-center">
-            <p className="text-xl font-black text-[#FFD93D] leading-none">+{ruta.puntosNuevos}</p>
-            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">pts</p>
+          <div className="text-center">
+            <p className="text-2xl font-black text-[#FFD93D]">+{ruta.puntosNuevos}</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">Puntos</p>
           </div>
         </div>
-
-        {/* Barra de progreso del viaje */}
-        <div className="mb-4">
-          <div className="flex justify-between text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
-            <span>Progreso</span>
-            <span>{progreso}%</span>
-          </div>
-          <div className="w-full h-2 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-[#00C896] to-emerald-400 rounded-full transition-all duration-1000"
-              style={{ width: `${Math.max(5, progreso)}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Info de ruta activa */}
-        <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/10 rounded-2xl border border-[#00C896]/20 mb-4">
-          <div className="w-8 h-8 bg-[#00C896] rounded-xl flex items-center justify-center shrink-0">
-            <Leaf size={14} className="text-white" fill="white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-black text-xs text-[#0D1B2A] dark:text-white">{ruta.title} · {ruta.sub}</p>
-            <p className="text-[9px] text-[#00C896] font-bold">
-              Ahorrando {ruta.co2Evitado.toFixed(2)} kg CO₂ vs auto 🌿
-            </p>
-          </div>
-        </div>
-
-        {/* BOTÓN FINALIZAR — solo el usuario lo activa */}
-        <button
-          onClick={onFinalizar}
-          className={`w-full py-4 rounded-2xl font-black text-white text-sm flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl
-            ${esUltimoPaso
-              ? 'bg-gradient-to-r from-[#00C896] to-[#00A87E] shadow-green-500/30 animate-pulse'
-              : 'bg-[#1A1A2E]'
-            }`}
-        >
-          <CheckCircle2 size={20} />
-          {esUltimoPaso ? '¡Llegué! · Finalizar viaje 🎉' : 'Finalizar viaje anticipado'}
-        </button>
+        <Button fullWidth onClick={onFinalizar} className="py-5">
+          <CheckCircle2 size={24} /> ¡HE LLEGADO!
+        </Button>
       </div>
     </div>
   );
