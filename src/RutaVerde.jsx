@@ -22,43 +22,178 @@ if (typeof window !== 'undefined') {
 }
 
 // --- CONSTANTS SANTIAGO INFRASTRUCTURE ---
-const METRO_LINES = [
-  { name: 'L1', color: '#E30613', weight: 6, coords: [
-    [-33.4501,-70.7061],[-33.4500,-70.6924],[-33.4491,-70.6787], // San Pablo→Pudahuel→Bello
-    [-33.4489,-70.6693],[-33.4480,-70.6599],[-33.4468,-70.6558], // La Moneda→Los Héroes→República
-    [-33.4447,-70.6512],[-33.4411,-70.6402],[-33.4372,-70.6328], // Santa Lucía→U. Católica→Baquedano
-    [-33.4312,-70.6189],[-33.4274,-70.6111],[-33.4231,-70.6062], // Salvador→M. Montt→P. de Valdivia
-    [-33.4190,-70.5977],[-33.4144,-70.5837],[-33.4076,-70.5689]  // Los Leones→Tobalaba→Escuela Militar
-  ]},
-  { name: 'L2', color: '#F6AD00', weight: 6, coords: [
-    [-33.4334,-70.6503],[-33.4365,-70.6489],[-33.4402,-70.6475], // Cal y Canto→Santa Ana→Los Héroes
-    [-33.4534,-70.6323],[-33.4688,-70.6121],[-33.4801,-70.6056]  // Franklin→Lo Ovalle→La Cisterna
-  ]},
-  { name: 'L3', color: '#8E4D1E', weight: 6, coords: [
-    [-33.4334,-70.6503],[-33.4401,-70.6456],[-33.4455,-70.6399], // Cal y Canto→Pza de Armas→U. de Chile
-    [-33.4512,-70.6321],[-33.4601,-70.5989]                      // Parque Almagro→Matta
-  ]},
-  { name: 'L4', color: '#006FB9', weight: 6, coords: [
-    [-33.4144,-70.5837],[-33.4281,-70.5736],[-33.4395,-70.5389], // Tobalaba→Cristóbal Colón→Fco. Bilbao
-    [-33.4678,-70.5123],[-33.4891,-70.4822],[-33.5123,-70.4678]  // Pza. Egaña→Quilín→V. Mackenna
-  ]},
-  { name: 'L5', color: '#00A14E', weight: 6, coords: [
-    [-33.4521,-70.5778],[-33.4490,-70.6012],[-33.4411,-70.6231], // Baquedano→Pque. Bustamante→Sta. Isabel
-    [-33.4634,-70.6089],[-33.4822,-70.6543],[-33.5123,-70.7678]  // Irarrázaval→Ñuble→Pza. Maipú
-  ]},
-  { name: 'L6', color: '#A3238E', weight: 6, coords: [
-    [-33.4172,-70.5985],[-33.4437,-70.6065],[-33.4534,-70.6212], // Los Leones→Inés de Suárez→Ñuñoa
-    [-33.4611,-70.6432],[-33.4721,-70.6654],[-33.4889,-70.7012]  // Franklin→Bío Bío→Cerrillos
-  ]}
-];
+const metroStations = [
+  // LÍNEA 1 — ROJA
+  {name:"San Pablo", coords:[-33.4284,-70.7518], line:"L1", color:"#FF0000"},
+  {name:"Pajaritos", coords:[-33.4298,-70.7297], line:"L1", color:"#FF0000"},
+  {name:"Las Rejas", coords:[-33.4331,-70.6889], line:"L1", color:"#FF0000"},
+  {name:"Ecuador", coords:[-33.4334,-70.6789], line:"L1", color:"#FF0000"},
+  {name:"Estación Central", coords:[-33.4352,-70.6389], line:"L1", color:"#FF0000"},
+  {name:"Universidad de Santiago", coords:[-33.4347,-70.6489], line:"L1", color:"#FF0000"},
+  {name:"Santa Ana", coords:[-33.4361,-70.6089], line:"L1", color:"#FF0000"},
+  {name:"Plaza de Armas", coords:[-33.4365,-70.6089], line:"L1", color:"#FF0000"},
+  {name:"Bellas Artes", coords:[-33.4369,-70.5989], line:"L1", color:"#FF0000"},
+  {name:"Baquedano", coords:[-33.4374,-70.5889], line:"L1", color:"#FF0000"},
+  {name:"Salvador", coords:[-33.4378,-70.5789], line:"L1", color:"#FF0000"},
+  {name:"Manuel Montt", coords:[-33.4382,-70.5689], line:"L1", color:"#FF0000"},
+  {name:"Pedro de Valdivia", coords:[-33.4387,-70.5589], line:"L1", color:"#FF0000"},
+  {name:"Los Leones", coords:[-33.4391,-70.5489], line:"L1", color:"#FF0000"},
+  {name:"Tobalaba", coords:[-33.4395,-70.5389], line:"L1", color:"#FF0000"},
+  {name:"El Golf", coords:[-33.4399,-70.5189], line:"L1", color:"#FF0000"},
+  {name:"Escuela Militar", coords:[-33.4407,-70.5089], line:"L1", color:"#FF0000"},
+  {name:"Manquehue", coords:[-33.4419,-70.4789], line:"L1", color:"#FF0000"},
+  {name:"Los Dominicos", coords:[-33.4427,-70.4589], line:"L1", color:"#FF0000"},
+  // LÍNEA 2 — AMARILLA
+  {name:"Cerro Blanco", coords:[-33.4285,-70.6534], line:"L2", color:"#FFD700"},
+  {name:"Cementerios", coords:[-33.4312,-70.6512], line:"L2", color:"#FFD700"},
+  {name:"Cal y Canto", coords:[-33.4334,-70.6503], line:"L2", color:"#FFD700"},
+  {name:"Parque O'Higgins", coords:[-33.4467,-70.6389], line:"L2", color:"#FFD700"},
+  {name:"Franklin", coords:[-33.4534,-70.6323], line:"L2", color:"#FFD700"},
+  {name:"El Llano", coords:[-33.4567,-70.6289], line:"L2", color:"#FFD700"},
+  {name:"San Miguel", coords:[-33.4601,-70.6256], line:"L2", color:"#FFD700"},
+  {name:"La Cisterna", coords:[-33.4801,-70.6056], line:"L2", color:"#FFD700"},
+  // LÍNEA 3 — NARANJA
+  {name:"Quilín", coords:[-33.4912,-70.5756], line:"L3", color:"#FF8C00"},
+  {name:"Matta", coords:[-33.4689,-70.5923], line:"L3", color:"#FF8C00"},
+  {name:"Irarrázaval", coords:[-33.4645,-70.5956], line:"L3", color:"#FF8C00"},
+  {name:"Parque Bustamante", coords:[-33.4512,-70.6056], line:"L3", color:"#FF8C00"},
+  {name:"Balmaceda", coords:[-33.4245,-70.6256], line:"L3", color:"#FF8C00"},
+  {name:"Los Libertadores", coords:[-33.4112,-70.6356], line:"L3", color:"#FF8C00"},
+  // LÍNEA 4 — AZUL
+  {name:"Tobalaba L4", coords:[-33.4395,-70.5389], line:"L4", color:"#0000FF"},
+  {name:"Cristóbal Colón", coords:[-33.4456,-70.5334], line:"L4", color:"#0000FF"},
+  {name:"Plaza Egaña", coords:[-33.4678,-70.5123], line:"L4", color:"#0000FF"},
+  {name:"Grecia", coords:[-33.4789,-70.5012], line:"L4", color:"#0000FF"},
+  {name:"Macul", coords:[-33.5067,-70.4734], line:"L4", color:"#0000FF"},
+  {name:"La Cisterna L4", coords:[-33.5401,-70.4401], line:"L4", color:"#0000FF"},
+  {name:"Puente Alto", coords:[-33.5678,-70.4123], line:"L4", color:"#0000FF"},
+  // LÍNEA 5 — VERDE
+  {name:"Plaza de Maipú", coords:[-33.5123,-70.7678], line:"L5", color:"#008000"},
+  {name:"Pudahuel", coords:[-33.4945,-70.7101], line:"L5", color:"#008000"},
+  {name:"Quinta Normal", coords:[-33.4565,-70.5923], line:"L5", color:"#008000"},
+  {name:"Ñuble", coords:[-33.4387,-70.5345], line:"L5", color:"#008000"},
+  {name:"Vicente Valdés", coords:[-33.3942,-70.3901], line:"L5", color:"#008000"},
+  // LÍNEA 6 — MORADA
+  {name:"Cerrillos", coords:[-33.4912,-70.7156], line:"L6", color:"#800080"},
+  {name:"Franklin L6", coords:[-33.4823,-70.6823], line:"L6", color:"#800080"},
+  {name:"Ñuble L6", coords:[-33.4734,-70.6489], line:"L6", color:"#800080"},
+  {name:"Los Leones L6", coords:[-33.4601,-70.5989], line:"L6", color:"#800080"},
+  {name:"Ñuñoa", coords:[-33.4556,-70.5823], line:"L6", color:"#800080"},
+]
 
-const BICI_STATIONS = [
-  { id: 1, pos: [-33.4369, -70.6509], name: "BipBici Plaza de Armas", info: "Estado: Operativo", disponibles: 8 },
-  { id: 2, pos: [-33.4399, -70.5894], name: "BipBici Tobalaba", info: "Conexión L1/L4", disponibles: 5 },
-  { id: 3, pos: [-33.4552, -70.6826], name: "BipBici Estación Central", info: "Frontis Terminal", disponibles: 12 },
-  { id: 4, pos: [-33.4281, -70.6077], name: "BipBici Bellas Artes", disponibles: 3 },
-  { id: 5, pos: [-33.4196, -70.6045], name: "BipBici Manuel Montt", disponibles: 7 }
-];
+// BIPBICI
+const bipbiciStations = [
+  {name:"BipBici Baquedano", coords:[-33.4374,-70.5889], bicis:4},
+  {name:"BipBici Parque Forestal", coords:[-33.4350,-70.6100], bicis:7},
+  {name:"BipBici Italia", coords:[-33.4556,-70.5956], bicis:3},
+  {name:"BipBici Providencia", coords:[-33.4282,-70.6089], bicis:6},
+  {name:"BipBici Tobalaba", coords:[-33.4395,-70.5389], bicis:5},
+  {name:"BipBici Ñuñoa", coords:[-33.4600,-70.5800], bicis:2},
+  {name:"BipBici Las Condes", coords:[-33.4180,-70.5780], bicis:8},
+]
+
+// SCOOTERS
+const scooterPoints = [
+  {name:"Scooter Bellas Artes", coords:[-33.4369,-70.5989], battery:87},
+  {name:"Scooter Italia", coords:[-33.4500,-70.5900], battery:62},
+  {name:"Scooter Providencia", coords:[-33.4300,-70.6000], battery:95},
+  {name:"Scooter Las Condes", coords:[-33.4200,-70.5700], battery:43},
+]
+
+const metroLines = {
+  L1: {
+    color: '#FF0000',
+    coords: [
+      [-33.4284,-70.7518],[-33.4298,-70.7297],
+      [-33.4318,-70.7089],[-33.4324,-70.6989],
+      [-33.4331,-70.6889],[-33.4334,-70.6789],
+      [-33.4338,-70.6689],[-33.4347,-70.6489],
+      [-33.4352,-70.6389],[-33.4356,-70.6289],
+      [-33.4361,-70.6189],[-33.4365,-70.6089],
+      [-33.4369,-70.5989],[-33.4374,-70.5889],
+      [-33.4378,-70.5789],[-33.4382,-70.5689],
+      [-33.4387,-70.5589],[-33.4391,-70.5489],
+      [-33.4395,-70.5389],[-33.4399,-70.5189],
+      [-33.4403,-70.5089],[-33.4407,-70.5089],
+      [-33.4415,-70.4889],[-33.4419,-70.4789],
+      [-33.4423,-70.4689],[-33.4427,-70.4589]
+    ]
+  },
+  L2: {
+    color: '#FFD700',
+    coords: [
+      [-33.4285,-70.6534],[-33.4312,-70.6512],
+      [-33.4334,-70.6503],[-33.4365,-70.6489],
+      [-33.4401,-70.6456],[-33.4434,-70.6423],
+      [-33.4467,-70.6389],[-33.4501,-70.6356],
+      [-33.4534,-70.6323],[-33.4567,-70.6289],
+      [-33.4601,-70.6256],[-33.4634,-70.6223],
+      [-33.4667,-70.6189],[-33.4701,-70.6156],
+      [-33.4734,-70.6123],[-33.4767,-70.6089],
+      [-33.4801,-70.6056],[-33.4834,-70.6023]
+    ]
+  },
+  L3: {
+    color: '#FF8C00',
+    coords: [
+      [-33.4912,-70.5756],[-33.4867,-70.5789],
+      [-33.4823,-70.5823],[-33.4778,-70.5856],
+      [-33.4734,-70.5889],[-33.4689,-70.5923],
+      [-33.4645,-70.5956],[-33.4601,-70.5989],
+      [-33.4556,-70.6023],[-33.4512,-70.6056],
+      [-33.4467,-70.6089],[-33.4423,-70.6123],
+      [-33.4378,-70.6156],[-33.4334,-70.6189],
+      [-33.4289,-70.6223],[-33.4245,-70.6256],
+      [-33.4201,-70.6289],[-33.4156,-70.6323],
+      [-33.4112,-70.6356]
+    ]
+  },
+  L4: {
+    color: '#0066CC',
+    coords: [
+      [-33.4395,-70.5389],[-33.4456,-70.5334],
+      [-33.4512,-70.5289],[-33.4567,-70.5234],
+      [-33.4623,-70.5178],[-33.4678,-70.5123],
+      [-33.4734,-70.5067],[-33.4789,-70.5012],
+      [-33.4845,-70.4956],[-33.4901,-70.4901],
+      [-33.4956,-70.4845],[-33.5012,-70.4789],
+      [-33.5067,-70.4734],[-33.5123,-70.4678],
+      [-33.5178,-70.4623],[-33.5234,-70.4567],
+      [-33.5289,-70.4512],[-33.5345,-70.4456],
+      [-33.5401,-70.4401],[-33.5456,-70.4345],
+      [-33.5512,-70.4289],[-33.5567,-70.4234],
+      [-33.5623,-70.4178],[-33.5678,-70.4123]
+    ]
+  },
+  L5: {
+    color: '#00AA00',
+    coords: [
+      [-33.5123,-70.7678],[-33.5078,-70.7534],
+      [-33.5034,-70.7389],[-33.4989,-70.7245],
+      [-33.4945,-70.7101],[-33.4901,-70.6956],
+      [-33.4856,-70.6812],[-33.4812,-70.6667],
+      [-33.4767,-70.6523],[-33.4723,-70.6378],
+      [-33.4634,-70.6089],[-33.4565,-70.5923],
+      [-33.4476,-70.5634],[-33.4432,-70.5489],
+      [-33.4387,-70.5345],[-33.4343,-70.5201],
+      [-33.4298,-70.5056],[-33.4254,-70.4912],
+      [-33.4209,-70.4767],[-33.4165,-70.4623],
+      [-33.4120,-70.4478],[-33.4076,-70.4334],
+      [-33.4031,-70.4189],[-33.3987,-70.4045],
+      [-33.3942,-70.3901]
+    ]
+  },
+  L6: {
+    color: '#800080',
+    coords: [
+      [-33.4912,-70.7156],[-33.4867,-70.6989],
+      [-33.4823,-70.6823],[-33.4778,-70.6656],
+      [-33.4734,-70.6489],[-33.4689,-70.6323],
+      [-33.4645,-70.6156],[-33.4601,-70.5989],
+      [-33.4556,-70.5823]
+    ]
+  }
+}
 
 const EMISIONES = { auto: 0.21, micro: 0.04, metro: 0.01, bici: 0, caminar: 0 };
 
@@ -90,6 +225,22 @@ function getDistMeters(lat1, lon1, lat2, lon2) {
 
 function buildFallbackRoute(o, d) {
   return Array.from({ length: 10 }).map((_, i) => [o[0] + (d[0]-o[0])*(i/9), o[1] + (d[1]-o[1])*(i/9)]);
+}
+
+const formatAddress = (addr) => {
+  if (!addr) return '';
+  return addr
+    .toLowerCase()
+    .split(' ')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+    .replace(' De ', ' de ')
+    .replace(' Del ', ' del ')
+    .replace(' La ', ' la ')
+    .replace(' Las ', ' las ')
+    .replace(' Los ', ' los ')
+    .replace(' En ', ' en ')
+    .replace(' Y ', ' y ')
 }
 
 // --- UI COMPONENTS ---
@@ -155,7 +306,7 @@ const CityMap = ({ destination, darkMode, onSearchSelect, routePreview, centerTr
 
   return (
     <div className="relative w-full h-full overflow-hidden">
-      <div className="absolute top-4 left-4 right-4 z-[1000] space-y-2">
+      <div className="absolute top-4 left-4 right-4 z-[999] space-y-2">
         <div className="bg-[#161B22] p-2 rounded-2xl border border-white/10 shadow-2xl flex items-center gap-2">
           <Search size={20} className="text-gray-500 ml-2" />
           <Input placeholder="Buscar destino..." value={mapQuery} onChange={e => handleSearch(e.target.value)} className="!border-none !bg-transparent !p-1 font-bold" />
@@ -172,14 +323,79 @@ const CityMap = ({ destination, darkMode, onSearchSelect, routePreview, centerTr
         <TileLayer url={mapUrl} attribution="© CARTO" />
         <Recenter dest={destination} trigger={centerTrigger} pos={pos} />
         {routePreview && <Polyline positions={routePreview} color="#00C896" weight={8} opacity={0.9} />}
-        {METRO_LINES.map(l => (
-          <Polyline key={l.name} positions={l.coords} color={l.color} weight={5} opacity={0.6} />
+
+        {/* Metro Lines with Outline */}
+        {Object.entries(metroLines).map(([line, data]) => (
+          <React.Fragment key={line}>
+            <Polyline positions={data.coords} color="#000000" weight={7} opacity={0.8} />
+            <Polyline positions={data.coords} color={data.color} weight={4} opacity={1} />
+          </React.Fragment>
         ))}
-        {BICI_STATIONS.map(s => (
-          <Marker key={s.id} position={s.pos} icon={L.divIcon({ html: '<div class="bg-blue-500 border-2 border-white rounded-full w-8 h-8 flex items-center justify-center text-[10px]">🚲</div>', className: '' })}>
-            <Popup><div className="p-1"><p className="font-black text-xs text-slate-800">{s.name}</p><p className="text-[10px] text-green-600 font-bold mt-1">Disponibles: {s.disponibles}</p></div></Popup>
+
+        {/* Metro Stations */}
+        {metroStations.map((s, i) => (
+          <Marker
+            key={`metro-${i}`}
+            position={s.coords}
+            icon={L.divIcon({
+              html: `<div style="background:${s.color};color:white;width:24px;height:24px;border-radius:4px;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.5)">M</div>`,
+              className:'',
+              iconSize:[24,24],
+              iconAnchor:[12,12]
+            })}
+          >
+            <Popup>
+              <div style={{background:'#161B22', color:'#F0F6FC', padding:'8px', borderRadius:'8px', minWidth:'120px'}}>
+                <b style={{color:s.color}}>{s.name}</b>
+                <br/><span style={{color:'#8B949E'}}>Línea {s.line}</span>
+                <br/><span style={{color:'#00C896'}}>✅ Operación normal</span>
+              </div>
+            </Popup>
           </Marker>
         ))}
+
+        {/* BipBici Stations */}
+        {bipbiciStations.map((s, i) => (
+          <Marker
+            key={`bici-${i}`}
+            position={s.coords}
+            icon={L.divIcon({
+              html: `<div style="background:#00D4FF;color:#000;width:28px;height:28px;border-radius:50%;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;box-shadow:0 2px 6px rgba(0,212,255,0.4)">${s.bicis}</div>`,
+              className:'',
+              iconSize:[28,28],
+              iconAnchor:[14,14]
+            })}
+          >
+            <Popup>
+              <div style={{background:'#161B22', color:'#F0F6FC', padding:'8px', borderRadius:'8px'}}>
+                <b style={{color:'#00D4FF'}}>🚲 {s.name}</b>
+                <br/>{s.bicis} bicis disponibles
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+
+        {/* Scooter Points */}
+        {scooterPoints.map((s, i) => (
+          <Marker
+            key={`scooter-${i}`}
+            position={s.coords}
+            icon={L.divIcon({
+              html: `<div style="background:#FF8C42;color:white;width:26px;height:26px;border-radius:50%;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;box-shadow:0 2px 6px rgba(255,140,66,0.4)">🛴</div>`,
+              className:'',
+              iconSize:[26,26],
+              iconAnchor:[13,13]
+            })}
+          >
+            <Popup>
+              <div style={{background:'#161B22', color:'#F0F6FC', padding:'8px', borderRadius:'8px'}}>
+                <b style={{color:'#FF8C42'}}>🛴 {s.name}</b>
+                <br/>Batería: {s.battery}%
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+
         <Marker position={pos} icon={L.divIcon({ html: '<div class="bg-blue-600 w-6 h-6 rounded-full border-4 border-white shadow-xl"></div>', className: '' })} />
         {destination && <Marker position={destination} icon={L.divIcon({ html: '<div class="text-3xl animate-bounce">🏁</div>', className: '' })} />}
       </MapContainer>
@@ -439,21 +655,80 @@ export default function RutaVerde() {
 
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(null), 3000); };
 
+  const [showRoutes, setShowRoutes] = useState(false);
+  const [osrmTime, setOsrmTime] = useState(25);
+
   const handleSearch = useCallback(async (coords, name) => {
-    setDest({ coords, name });
+    // Format name to street · commune
+    const parts = name.split(',');
+    const street = parts[0]?.trim() || '';
+    const commune = parts[1]?.trim() || parts[2]?.trim() || '';
+    const formattedName = commune
+      ? `${formatAddress(street)} · ${formatAddress(commune)}`
+      : formatAddress(street);
+
+    setDest({ coords, name: formattedName });
     try {
       const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${pos[1]},${pos[0]};${coords[1]},${coords[0]}?overview=full&geometries=geojson`);
       const d = await r.json();
-      if (d.routes && d.routes[0]) setRutaPts(d.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]));
-    } catch { setRutaPts([pos, coords]); }
+      if (d.routes && d.routes[0]) {
+        setRutaPts(d.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]));
+        setOsrmTime(Math.round(d.routes[0].duration / 60) || 25);
+      } else {
+        setOsrmTime(25);
+      }
+    } catch {
+      setRutaPts([pos, coords]);
+      setOsrmTime(25);
+    }
   }, [pos]);
 
   const endNav = () => {
     const ns = { points: stats.points + 120, co2Total: stats.co2Total + 1.3 };
     setStats(ns); storage.set('rv_stats', ns);
     setNav(false); setDest(null); setRutaPts([]); setTab('inicio');
+    setShowRoutes(false);
     showToast("¡Viaje finalizado! +120 puntos");
   };
+
+  const routeOptions = useMemo(() => [
+    {
+      id: 'verde',
+      nombre: 'Ruta Verde',
+      badge: 'RECOMENDADA',
+      badgeColor: '#00C896',
+      iconos: ['🚇','🚶'],
+      tiempo: `${Math.round(osrmTime * 1.2)} min`,
+      precio: '$800',
+      co2: '0.2 kg',
+      arboles: '0.1',
+      descripcion: 'Metro + caminata'
+    },
+    {
+      id: 'rapida',
+      nombre: 'Ruta Rápida',
+      badge: 'MÁS RÁPIDA',
+      badgeColor: '#FFD93D',
+      iconos: ['🚌','🚇'],
+      tiempo: `${Math.round(osrmTime)} min`,
+      precio: '$1.200',
+      co2: '0.8 kg',
+      arboles: '0.4',
+      descripcion: 'Bus + Metro'
+    },
+    {
+      id: 'activa',
+      nombre: 'Ruta Activa',
+      badge: 'CERO EMISIONES',
+      badgeColor: '#00D4FF',
+      iconos: ['🚲'],
+      tiempo: `${Math.round(osrmTime * 1.5)} min`,
+      precio: '$0',
+      co2: '0 kg',
+      arboles: '0',
+      descripcion: 'Solo bicicleta'
+    }
+  ], [osrmTime]);
 
   if (!onboard) return (
     <div className="fixed inset-0 bg-[#0D1117] flex flex-col items-center justify-center p-8 text-white text-center">
@@ -466,6 +741,13 @@ export default function RutaVerde() {
 
   return (
     <div className="bg-[#0D1117] min-h-screen text-white font-sans overflow-hidden">
+      <header style={{position: 'fixed', top: 0, left: 0, right: 0, height: '60px', zIndex: 1000, background: '#0D1117', display: 'flex', alignItems: 'center', padding: '0 20px', borderBottom: '1px solid #30363D'}}>
+        <div className="flex items-center gap-2">
+          <div className="bg-green-600 p-1.5 rounded-lg"><Leaf size={18} /></div>
+          <span className="font-black text-lg tracking-tighter">RUTA VERDE</span>
+        </div>
+      </header>
+
       {nav && (
         <NavegacionActivaScreen
           ruta={{ instrucciones: ["Sigue por Av. Libertador", "Dobla en la esquina", "Llegaste"], pts: 120, destinoCoords: dest?.coords }}
@@ -474,6 +756,53 @@ export default function RutaVerde() {
           onCancelar={()=>setNav(false)}
           darkMode={true}
         />
+      )}
+
+      {showRoutes && dest && (
+        <div className="fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex items-end animate-fade-in" style={{zIndex: 1000}}>
+          <div className="bg-[#161B22] w-full rounded-t-[20px] p-6 animate-slide-up border-t border-white/10 overflow-y-auto max-h-[80vh]">
+            <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-6" />
+            <h3 className="text-lg font-black text-white mb-6">Rutas disponibles hacia <span className="text-[#00C896]">{dest.name}</span></h3>
+
+            <div className="space-y-4">
+              {routeOptions.map(route => (
+                <div key={route.id} className="bg-[#21262D] rounded-[12px] p-4 border border-[#30363D]">
+                  <div className="flex justify-between items-start mb-2">
+                    <Badge style={{backgroundColor: route.badgeColor, color: '#000'}} className="text-[9px] px-2 py-0.5">{route.badge}</Badge>
+                    <span className="font-black text-white text-sm">{route.nombre}</span>
+                  </div>
+
+                  <div className="flex gap-2 mb-3 text-xl">
+                    {route.iconos.map((ico, idx) => (
+                      <span key={idx}>{ico}</span>
+                    ))}
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs font-bold text-slate-400 mb-2">
+                    <span>{route.tiempo} | {route.precio} | {route.co2} CO₂</span>
+                  </div>
+
+                  <div className="text-[10px] text-[#00C896] font-bold mb-4">
+                    = plantar {route.arboles} árboles 🌳
+                  </div>
+
+                  <Button
+                    fullWidth
+                    className="py-3 text-sm"
+                    onClick={() => {
+                      setShowRoutes(false);
+                      setNav(true);
+                    }}
+                  >
+                    Iniciar esta ruta ▶
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            <Button variant="ghost" fullWidth onClick={() => setShowRoutes(false)} className="mt-4 py-3">Cancelar</Button>
+          </div>
+        </div>
       )}
 
       {redeeming && (
@@ -520,15 +849,15 @@ export default function RutaVerde() {
           {tab === 'perfil' && <ProfileComponent user={user} stats={stats} onLogout={() => { storage.clear(); window.location.reload(); }} darkMode={true} />}
         </div>
 
-        {dest && !nav && (
-          <div className="absolute bottom-24 left-4 right-4 bg-slate-900/95 backdrop-blur-xl p-8 rounded-[40px] border border-white/10 shadow-2xl animate-slide-up z-20">
-            <h3 className="text-center text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Ir a {dest.name || 'Destino'}</h3>
-            <Button fullWidth onClick={()=>setTab('rutas')} className="py-5 text-lg">Ver Opciones de Ruta</Button>
+        {dest && !nav && !showRoutes && (
+          <div className="absolute bottom-24 left-4 right-4 bg-slate-900/95 backdrop-blur-xl p-8 rounded-[40px] border border-white/10 shadow-2xl animate-slide-up z-20" style={{zIndex: 1001}}>
+            <h3 className="text-center text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Ir a <span className="text-white">{dest.name}</span></h3>
+            <Button fullWidth onClick={()=>setShowRoutes(true)} className="py-5 text-lg">Ver Opciones de Ruta</Button>
             <Button fullWidth onClick={()=>setDest(null)} variant="ghost" className="py-4 mt-2">Cancelar</Button>
           </div>
         )}
 
-        <nav className="fixed bottom-0 left-0 right-0 bg-slate-900/90 backdrop-blur-2xl border-t border-white/5 p-6 flex justify-around items-center z-[100] max-w-md mx-auto rounded-t-[32px] shadow-2xl">
+        <nav className="fixed bottom-0 left-0 right-0 bg-[#161B22] border-t border-white/5 p-6 flex justify-around items-center z-[1000] max-w-md mx-auto shadow-2xl" style={{height: '60px', paddingBottom: 'env(safe-area-inset-bottom)'}}>
           {[
             {id:'inicio', i:<Home/>, l:'Inicio'},
             {id:'rutas', i:<Milestone/>, l:'Rutas'},
@@ -545,13 +874,23 @@ export default function RutaVerde() {
       </main>
 
       <style>{`
-        body { margin:0; font-family: 'Inter', sans-serif; background: #0D1117; overflow: hidden; }
+        body, #root {
+          margin:0;
+          font-family: 'Inter', sans-serif;
+          background: #0D1117;
+          height: 100dvh;
+          overflow: hidden;
+          position: fixed;
+          width: 100%;
+        }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         @keyframes slide-up { from { transform: translateY(20px); opacity:0; } to { transform: translateY(0); opacity:1; } }
         .animate-slide-up { animation: slide-up 0.5s ease-out forwards; }
         @keyframes fade-in { from { opacity:0; } to { opacity:1; } }
         .animate-fade-in { animation: fade-in 0.5s ease-out forwards; }
-        .leaflet-container { background: #0D1117 !important; height: 100% !important; width: 100% !important; }
+        .leaflet-container { background: #0D1117 !important; height: calc(100dvh - 120px) !important; width: 100% !important; margin-top: 60px; }
+        .leaflet-pane { z-index: 400 !important; }
+        .leaflet-top, .leaflet-bottom { z-index: 401 !important; }
       `}</style>
     </div>
   );
