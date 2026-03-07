@@ -212,9 +212,9 @@ function useTrafficAlerts(refreshIntervalMs = 120000) {
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
 const customIcons = {
@@ -377,7 +377,7 @@ const CityMap = ({
     const prev = useRef(null);
     useEffect(() => {
       if (dest && JSON.stringify(dest) !== JSON.stringify(prev.current)) {
-        map.flyTo(dest, 15, { animate: true });
+        map.flyTo(dest, 16, { animate: true });
         prev.current = dest;
       }
     }, [dest, map]);
@@ -430,7 +430,13 @@ const CityMap = ({
         </div>
       )}
 
-      <MapContainer center={pos} zoom={14} scrollWheelZoom={true} className="w-full h-full" zoomControl={false}>
+      <MapContainer
+        center={pos}
+        zoom={14}
+        scrollWheelZoom={true}
+        style={{ height: '100%', width: '100%' }}
+        zoomControl={false}
+      >
         <TileLayer attribution="&copy; CARTO" url={mapUrl} eventHandlers={{ tileerror: () => setTileError(true) }} />
         <RecenterOnDest dest={destination} />
         <CenterOnUser trigger={centerTrigger} />
@@ -636,6 +642,14 @@ function NavegacionActivaScreen({ ruta, userPos, onFinalizar, onCancelar, darkMo
   const [routePts, setRoutePts] = useState([]);
   const [posActual, setPosActual] = useState(userPos||[-33.4489,-70.6693]);
 
+  const FollowUser = () => {
+    const map = useMap();
+    useEffect(() => {
+      map.flyTo(posActual, 17, { animate: true });
+    }, [posActual, map]);
+    return null;
+  };
+
   const fetchRoute = useCallback(async (origin) => {
     const o = origin, d = ruta.destinoCoords||[-33.43, -70.62];
     const profile = ruta.medio === 'caminata' ? 'foot' : ruta.medio === 'bici' ? 'bike' : 'driving';
@@ -688,11 +702,18 @@ function NavegacionActivaScreen({ ruta, userPos, onFinalizar, onCancelar, darkMo
         </div>
       </div>
 
-      <div className="flex-1 relative">
-        <MapContainer center={posActual} zoom={17} scrollWheelZoom={true} zoomControl={false} className="w-full h-full">
+      <div className="flex-1 relative" style={{ minHeight: '300px' }}>
+        <MapContainer
+          center={posActual}
+          zoom={17}
+          scrollWheelZoom={true}
+          zoomControl={false}
+          style={{ height: '100%', width: '100%' }}
+        >
           <TileLayer url={darkMode?'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png':'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'} />
           {routePts.length>1 && <Polyline positions={routePts} color="#00C896" weight={7} />}
           <Marker position={posActual} icon={customIcons.user} />
+          <FollowUser />
         </MapContainer>
       </div>
 
