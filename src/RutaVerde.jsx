@@ -370,59 +370,50 @@ const iconIncidente = (severity) => L.divIcon({
   iconAnchor: [12, 12]
 });
 
-// Coordenadas reales estaciones Metro de Santiago (fuente: Metro S.A. / OSM)
 const METRO_LINES = [
-  { name: 'L1', color: '#E30613', weight: 6, coords: [
-    [-33.4258,-70.6580],[-33.4259,-70.6556],[-33.4265,-70.6519], // San Pablo→Neptuno→Pajaritos
-    [-33.4270,-70.6481],[-33.4278,-70.6441],[-33.4290,-70.6404], // Pudahuel→Las Rejas→Ecuador
-    [-33.4300,-70.6366],[-33.4312,-70.6321],[-33.4315,-70.6277], // San Alberto H→U de Santiago→Estación Central
-    [-33.4339,-70.6229],[-33.4360,-70.6179],[-33.4376,-70.6131], // Unión Latinoamer→República→Lib.Bernardo OHiggins
-    [-33.4389,-70.6089],[-33.4400,-70.6047],[-33.4404,-70.6012], // Santa Ana→Plaza de Armas→Bellas Artes
-    [-33.4404,-70.5974],[-33.4403,-70.5934],[-33.4399,-70.5894], // Baquedano→Salvador→Tobalaba
-    [-33.4378,-70.5837],[-33.4345,-70.5767],[-33.4315,-70.5694], // Pedro de Valdivia→Los Leones→Tobalaba(L4)
-    [-33.4280,-70.5618],[-33.4246,-70.5552],[-33.4208,-70.5484]  // Manquehue→Hernando de Aguirre→Escuela Militar
+  // L1 — ROJO — San Pablo → Los Dominicos
+  { name: 'L1', color: '#E30613', weight: 5, label: 'Línea 1', coords: [
+    [-33.4458, -70.7394], [-33.4449, -70.7259], [-33.4441, -70.7132], [-33.4429, -70.7011],
+    [-33.4412, -70.6923], [-33.4426, -70.6824], [-33.4450, -70.6728], [-33.4475, -70.6659],
+    [-33.4489, -70.6587], [-33.4468, -70.6513], [-33.4441, -70.6450], [-33.4414, -70.6385],
+    [-33.4384, -70.6322], [-33.4352, -70.6241], [-33.4305, -70.6139], [-33.4233, -70.6061],
+    [-33.4172, -70.5985], [-33.4135, -70.5898], [-33.4111, -70.5804], [-33.4076, -70.5701],
+    [-33.4042, -70.5598], [-33.4011, -70.5489], [-33.4041, -70.5398], [-33.4076, -70.5284]
   ]},
-  { name: 'L2', color: '#F7941E', weight: 6, coords: [
-    [-33.3693,-70.6392],[-33.3750,-70.6389],[-33.3820,-70.6388], // Cal y Canto→Puente Cal y Canto→Patronato
-    [-33.3888,-70.6386],[-33.3960,-70.6384],[-33.4030,-70.6390], // Cerro Blanco→Cementerio→Einstein
-    [-33.4100,-70.6396],[-33.4163,-70.6408],[-33.4230,-70.6420], // Dorsal→Franklin→El Llano
-    [-33.4300,-70.6432],[-33.4370,-70.6445],[-33.4404,-70.6451], // San Miguel→Lo Vial→Lo Ovalle
-    [-33.4450,-70.6458],[-33.4510,-70.6462],[-33.4570,-70.6466], // Ciudad del Niño→El Parrón→Lo Valledor
-    [-33.4630,-70.6470],[-33.4700,-70.6474],[-33.4760,-70.6478], // Pedro Aguirre Cerda→Lo Espejo→Central
-    [-33.4820,-70.6482],[-33.4880,-70.6486],[-33.4940,-70.6490]  // Lo Prado→Nos→La Cisterna
+  // L2 — AMARILLO — Vespucio Norte → Hospital El Pino
+  { name: 'L2', color: '#F6AD00', weight: 5, label: 'Línea 2', coords: [
+    [-33.3644, -70.6387], [-33.3761, -70.6414], [-33.3881, -70.6449], [-33.3998, -70.6483],
+    [-33.4101, -70.6485], [-33.4219, -70.6496], [-33.4316, -70.6504], [-33.4382, -70.6508],
+    [-33.4491, -70.6518], [-33.4594, -70.6521], [-33.4697, -70.6515], [-33.4802, -70.6502],
+    [-33.4901, -70.6495], [-33.5005, -70.6482], [-33.5112, -70.6473], [-33.5221, -70.6465],
+    [-33.5332, -70.6451], [-33.5444, -70.6442], [-33.5552, -70.6433], [-33.5661, -70.6421]
   ]},
-  { name: 'L4', color: '#007A33', weight: 6, coords: [
-    [-33.3800,-70.5700],[-33.3860,-70.5740],[-33.3930,-70.5780], // Tobalaba Norte
-    [-33.3990,-70.5810],[-33.4050,-70.5830],[-33.4110,-70.5840], // El Golf→Alcántara→Escuela Militar
-    [-33.4180,-70.5818],[-33.4250,-70.5764],[-33.4320,-70.5704], // Manquehue→Hernando de Aguirre→Tobalaba
-    [-33.4399,-70.5894],[-33.4450,-70.5950],[-33.4510,-70.6010], // Pedro de Valdivia
-    [-33.4570,-70.6070],[-33.4640,-70.6130],[-33.4710,-70.6190], // Vicente Valdés→Rojas Magallanes
-    [-33.4780,-70.6250],[-33.4850,-70.6310],[-33.4920,-70.6370], // Trinidad→San Ramón→La Cisterna
-    [-33.5020,-70.6460],[-33.5120,-70.6500],[-33.5200,-70.6530]  // Hospital El Pino
+  // L3 — CAFÉ — Los Libertadores → Fernando Castillo Velasco
+  { name: 'L3', color: '#8E4D1E', weight: 5, label: 'Línea 3', coords: [
+    [-33.3551, -70.6782], [-33.3701, -70.6721], [-33.3852, -70.6652], [-33.4003, -70.6583],
+    [-33.4151, -70.6515], [-33.4282, -70.6498], [-33.4351, -70.6492], [-33.4422, -70.6451],
+    [-33.4485, -70.6352], [-33.4532, -70.6202], [-33.4561, -70.6051], [-33.4582, -70.5901],
+    [-33.4552, -70.5752], [-33.4511, -70.5602], [-33.4471, -70.5451]
   ]},
-  { name: 'L4A', color: '#78BE20', weight: 6, coords: [
-    [-33.4920,-70.6370],[-33.4980,-70.6480],[-33.5050,-70.6580], // La Cisterna→Lo Blanco
-    [-33.5120,-70.6650],[-33.5190,-70.6720]                      // La Granja→Santa Rosa
+  // L4 — AZUL — Tobalaba → Plaza de Puente Alto
+  { name: 'L4', color: '#006FB9', weight: 5, label: 'Línea 4', coords: [
+    [-33.4231, -70.6062], [-33.4382, -70.5982], [-33.4531, -70.5901], [-33.4682, -70.5822],
+    [-33.4831, -70.5741], [-33.4982, -70.5662], [-33.5131, -70.5581], [-33.5282, -70.5502],
+    [-33.5431, -70.5421], [-33.5582, -70.5342], [-33.5731, -70.5261], [-33.5882, -70.5182],
+    [-33.6031, -70.5101], [-33.6182, -70.5022]
   ]},
-  { name: 'L5', color: '#00A1DE', weight: 6, coords: [
-    [-33.4480,-70.7280],[-33.4481,-70.7200],[-33.4483,-70.7120], // Pudahuel→Barrancas
-    [-33.4485,-70.7040],[-33.4487,-70.6960],[-33.4489,-70.6880], // Bello→Blanqueado
-    [-33.4490,-70.6800],[-33.4490,-70.6720],[-33.4490,-70.6640], // Cerrillos→Lo Espejo
-    [-33.4490,-70.6511],[-33.4450,-70.6430],[-33.4404,-70.6012], // Quinta Normal→Cumming→Santa Ana
-    [-33.4376,-70.6131],[-33.4340,-70.6260],[-33.4310,-70.6380], // Bellavista→La Florida
-    [-33.4280,-70.6500],[-33.4250,-70.6600],[-33.4220,-70.6700]  // Mirador→Bellavista de la Florida
+  // L5 — VERDE — Plaza de Maipú → Vicente Valdés
+  { name: 'L5', color: '#00A14E', weight: 5, label: 'Línea 5', coords: [
+    [-33.5101, -70.7572], [-33.5001, -70.7421], [-33.4901, -70.7272], [-33.4801, -70.7121],
+    [-33.4701, -70.6972], [-33.4601, -70.6821], [-33.4501, -70.6672], [-33.4401, -70.6521],
+    [-33.4301, -70.6372], [-33.4251, -70.6221], [-33.4321, -70.6072], [-33.4451, -70.5921],
+    [-33.4581, -70.5772], [-33.4711, -70.5621], [-33.4841, -70.5472], [-33.4971, -70.5321]
   ]},
-  { name: 'L3', color: '#632323', weight: 6, coords: [
-    [-33.3650,-70.6850],[-33.3750,-70.6780],[-33.3850,-70.6710], // Los Libertadores→Cardenal Caro→Vivaceta
-    [-33.3950,-70.6640],[-33.4050,-70.6570],[-33.4150,-70.6500], // Conchalí→Plaza Chacabuco→Hospitales
-    [-33.4250,-70.6430],[-33.4350,-70.6360],[-33.4450,-70.6290]  // Puente Cal y Canto→Plaza de Armas→Universidad de Chile
-  ]},
-  { name: 'L6', color: '#9400D3', weight: 6, coords: [
-    [-33.3900,-70.6460],[-33.3960,-70.6380],[-33.4020,-70.6290], // Cerro Navia→Neptuno
-    [-33.4080,-70.6200],[-33.4140,-70.6130],[-33.4200,-70.6060], // Tte Merino→Lo Prado
-    [-33.4260,-70.5990],[-33.4320,-70.5920],[-33.4380,-70.5850], // Las Torres→Camino Agrícola
-    [-33.4440,-70.5780],[-33.4500,-70.5710],[-33.4560,-70.5640], // Avenida Sur
-    [-33.4620,-70.5580],[-33.4680,-70.5530],[-33.4740,-70.5490]  // Los Libertadores
+  // L6 — MORADO — Cerrillos → Los Leones
+  { name: 'L6', color: '#A3238E', weight: 5, label: 'Línea 6', coords: [
+    [-33.4932, -70.7055], [-33.4851, -70.6902], [-33.4771, -70.6751], [-33.4691, -70.6602],
+    [-33.4611, -70.6451], [-33.4531, -70.6302], [-33.4451, -70.6151], [-33.4371, -70.6002],
+    [-33.4291, -70.5851], [-33.4232, -70.6062]
   ]}
 ];
 
@@ -667,6 +658,42 @@ const CityMap = ({
           </React.Fragment>
         ))}
 
+        {/* ESTACIONES DE METRO — Marcadores oficiales */}
+        {(showMetro || modoTransporte === 'metro') && [
+          {pos:[-33.4377, -70.6508], name:'Plaza de Armas', linea:'L3/L5', color:'#8E4D1E'},
+          {pos:[-33.4352, -70.6413], name:'Bellas Artes', linea:'L5', color:'#00A14E'},
+          {pos:[-33.4352, -70.6341], name:'Baquedano', linea:'L1/L5', color:'#E30613'},
+          {pos:[-33.4172, -70.5985], name:'Los Leones', linea:'L1/L6', color:'#E30613'},
+          {pos:[-33.4191, -70.6042], name:'Pedro de Valdivia', linea:'L1', color:'#E30613'},
+          {pos:[-33.4231, -70.6062], name:'Tobalaba', linea:'L1/L4', color:'#E30613'},
+          {pos:[-33.4316, -70.6504], name:'Cal y Canto', linea:'L2/L3', color:'#F6AD00'},
+          {pos:[-33.4414, -70.6385], name:'Santa Lucía', linea:'L1', color:'#E30613'},
+          {pos:[-33.4441, -70.6450], name:'U. de Chile', linea:'L1/L3', color:'#E30613'},
+          {pos:[-33.4489, -70.6587], name:'Los Héroes', linea:'L1/L2', color:'#E30613'},
+          {pos:[-33.4501, -70.6672], name:'República', linea:'L1', color:'#E30613'},
+          {pos:[-33.4522, -70.6728], name:'U. de Santiago', linea:'L1', color:'#E30613'},
+          {pos:[-33.4552, -70.6826], name:'Estación Central', linea:'L1', color:'#E30613'},
+          {pos:[-33.5112, -70.6473], name:'La Cisterna', linea:'L2/L4A', color:'#F6AD00'},
+          {pos:[-33.4932, -70.7055], name:'Cerrillos', linea:'L6', color:'#A3238E'},
+          {pos:[-33.4971, -70.5321], name:'Vicente Valdés', linea:'L4/L5', color:'#006FB9'},
+          {pos:[-33.3551, -70.6782], name:'Los Libertadores', linea:'L3', color:'#8E4D1E'},
+          {pos:[-33.5101, -70.7572], name:'Plaza de Maipú', linea:'L5', color:'#00A14E'},
+          {pos:[-33.4076, -70.5284], name:'Los Dominicos', linea:'L1', color:'#E30613'},
+        ].map((st, i) => (
+          <Marker key={i} position={st.pos} icon={L.divIcon({
+            className: '',
+            html: `<div style="width:10px;height:10px;background:white;border:3px solid ${st.color};border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
+            iconSize:[10,10],iconAnchor:[5,5]
+          })}>
+            <Popup>
+              <div style={{minWidth:130,padding:6}}>
+                <p style={{fontWeight:900,fontSize:12,color:'#0D1B2A'}}>{st.name}</p>
+                <p style={{fontSize:10,color:st.color,fontWeight:700,marginTop:2}}>{st.linea}</p>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+
         {/* BICIS — estaciones reales BipBici */}
         {(showBici || modoTransporte === 'bici') && BICI_STATIONS.map(s => (
           <Marker
@@ -853,7 +880,7 @@ const ConfettiEffect = ({ onComplete }) => {
 
 // Dynamic imports for screens
 const HomeScreen = ({ user, onNavigate, stats, darkMode, alertas, alertasCargando }) => <HomeComponent user={user} onNavigate={onNavigate} stats={stats} darkMode={darkMode} alertas={alertas} alertasCargando={alertasCargando} />;
-const RoutePlanner = ({ onStart, destination, darkMode }) => <RoutePlannerComponent onStart={onStart} destination={destination} darkMode={darkMode} />;
+const RoutePlanner = ({ onStart, destination, darkMode, initialMode }) => <RoutePlannerComponent onStart={onStart} destination={destination} darkMode={darkMode} initialMode={initialMode} />;
 const LiveMapScreen = ({ darkMode, onNavigateToRutas }) => <LiveMapComponent darkMode={darkMode} onNavigateToRutas={onNavigateToRutas} />;
 const GamificationScreen = ({ points, showToast, redeeming, setRedeeming, co2Total }) => <GamificationComponent points={points} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} co2Total={co2Total} />;
 const ProfileScreen = ({ user, stats, onLogout, darkMode, setDarkMode }) => <ProfileComponent user={user} stats={stats} onLogout={onLogout} darkMode={darkMode} setDarkMode={setDarkMode} />;
@@ -1102,7 +1129,7 @@ const HomeComponent = ({ user, onNavigate, stats, darkMode, alertas, alertasCarg
   );
 };
 
-const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
+const RoutePlannerComponent = ({ onStart, destination, darkMode, initialMode = null }) => {
   const [loading, setLoading] = useState(true);
   const [coords, setCoords] = useState(destination);
   const { pos: userPos } = useGeolocalizacion();
@@ -1111,7 +1138,12 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
     setCoords(destination);
   }, [destination]);
 
-  const [selected, setSelected] = useState('bici');
+  const [selected, setSelected] = useState(initialMode || 'bici');
+
+  useEffect(() => {
+    if (initialMode) setSelected(initialMode);
+  }, [initialMode]);
+
   const [filter, setFilter] = useState('greener');
   const [starting, setStarting] = useState(false);
 
@@ -1123,17 +1155,11 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
   // Modo de transporte seleccionado por el usuario
   const [modoSeleccionado, setModoSeleccionado] = useState(null);
 
-  // Modos ordenados por prioridad ecológica (Ruta Verde primero)
+  // Modos principales solicitados (Pie, Bici, Metro)
   const MODOS = [
     { id: 'caminata', label: 'A pie', emoji: '🚶', color: '#00C896', co2Factor: 0, costeFijo: 0, osrmProfile: 'foot' },
     { id: 'bici', label: 'Bicicleta', emoji: '🚴', color: '#3B82F6', co2Factor: 0, costeFijo: 350, osrmProfile: 'cycling' },
-    { id: 'metro', label: 'Metro', emoji: '🚇', color: '#FF0000', co2Factor: 0.03, costeFijo: 780, osrmProfile: 'driving' },
-    { id: 'scooter', label: 'Scooter', emoji: '🛴', color: '#06B6D4', co2Factor: 0.015, costeFijo: 400, osrmProfile: 'driving' },
-    { id: 'micro', label: 'Micro', emoji: '🚌', color: '#F59E0B', co2Factor: 0.068, costeFijo: 800, osrmProfile: 'driving' },
-    { id: 'moto', label: 'Moto', emoji: '🏍️', color: '#8B5CF6', co2Factor: 0.085, costeFijo: 0, osrmProfile: 'driving' },
-    { id: 'uber', label: 'Uber', emoji: '🚗', color: '#1A1A2E', co2Factor: 0.21, costeFijo: 2800, osrmProfile: 'driving' },
-    { id: 'auto', label: 'Auto', emoji: '🚙', color: '#EF4444', co2Factor: 0.21, costeFijo: 1500, osrmProfile: 'driving' },
-    { id: 'compartido', label: 'Compartido', emoji: '🤝', color: '#EC4899', co2Factor: 0.1, costeFijo: 1200, osrmProfile: 'driving' },
+    { id: 'metro', label: 'Metro', emoji: '🚇', color: '#E30613', co2Factor: 0.01, costeFijo: 750, osrmProfile: 'driving' },
   ];
 
   const DIST_KM = 5.2; // distancia estimada de la ruta
@@ -1142,7 +1168,7 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
 
   useEffect(() => {
     if (!userPos || !coords) return;
-    MODOS.slice(0, 3).forEach(async (m) => {
+    MODOS.forEach(async (m) => {
       try {
         const profile = m.osrmProfile || 'driving';
         const url = `https://router.project-osrm.org/route/v1/${profile}/${userPos[1]},${userPos[0]};${coords[1]},${coords[0]}?overview=false`;
@@ -1189,13 +1215,7 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
       instrucciones: {
         caminata: ["🚶 Sal por la puerta principal","🚶 Sigue derecho por Av. Providencia","🚶 Gira a la derecha en la próxima esquina","🏁 Has llegado a tu destino"],
         bici: ["🚴 Retira BipBici en la estación más cercana","🚴 Toma la ciclovía de Av. Providencia hacia el oriente","🔒 Estaciona en la estación de destino","🚶 Camina 2 min — ¡llegaste!"],
-        scooter: ["🛴 Desbloquea el scooter con la app Grin/Lime","🛴 Sigue la ruta sugerida por la app","🛴 Estaciona en zona habilitada al llegar","✅ ¡Destino alcanzado!"],
         metro: ["🚶 Dirígete a la estación Metro más cercana","🚇 Toma L1 → dirección Escuela Militar","🚇 Baja en la estación más cercana a tu destino","🚶 Camina 3 min hasta llegar"],
-        micro: ["🚌 Dirígete a la parada más cercana","🚌 Toma la micro 301 o D01 hacia tu destino","🔔 Baja en la parada indicada","🚶 Camina 5 min — ¡llegaste!"],
-        moto: ["🏍️ Prepara tu moto","🏍️ Sigue la ruta por Av. Vitacura","🏍️ Gira en la rotonda","🏁 Destino alcanzado"],
-        uber: ["📱 Solicita el Uber desde la app","📍 Espera en el punto indicado","🚗 El conductor llega en ~2 min","🏁 Viaje puerta a puerta"],
-        auto: ["🚗 Sal con tu vehículo","🚗 Toma Av. Providencia dirección oriente","🅿️ Busca estacionamiento al llegar","🏁 Has llegado"],
-        compartido: ["🤝 Confirma el viaje compartido","🚗 El conductor recoge a otro pasajero primero","🚗 Luego te lleva a tu destino","🏁 ¡Llegaste!"],
       }[m.id] || ["🚀 En camino...","🏁 ¡Llegaste!"]
     };
   });
@@ -1298,7 +1318,44 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
             </div>
           ))}
         </div>
-        <Button fullWidth onClick={handleStartRoute} loading={starting} className="py-4 shadow-2xl relative z-[100]"><Navigation size={20} strokeWidth={3} /> Iniciar ruta</Button>
+        {/* Resumen del modo seleccionado (Estilo Citymapper) */}
+        {selected && (() => {
+          const r = filteredRoutes.find(x => x.id === selected);
+          if (!r) return null;
+          return (
+            <div className="p-5 rounded-3xl mb-4 border-2 shadow-sm animate-slide-up" style={{borderColor:`${r.colorHex}40`, background:`${r.colorHex}08`}}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-3xl shadow-inner" style={{background:`${r.colorHex}20`}}>
+                    {r.emoji}
+                  </div>
+                  <div>
+                    <p className="font-black text-base text-[#0D1B2A] dark:text-white">{r.sub}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{r.time} min</span>
+                      <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{r.cost > 0 ? `$${r.cost}` : 'Gratis'}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="inline-flex items-center gap-1 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-lg">
+                    <Leaf size={10} className="text-[#00C896]" fill="currentColor" />
+                    <span className="text-[10px] font-black text-[#00C896]">{r.co2 === 0 ? '0' : r.co2.toFixed(2)}kg</span>
+                  </div>
+                  <p className="text-[9px] font-black text-gray-400 mt-1">CO₂ EVITADO</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-dashed" style={{borderColor:`${r.colorHex}40`}}>
+                <div className="w-2 h-2 rounded-full animate-pulse" style={{background:r.colorHex}} />
+                <p className="text-[10px] font-bold" style={{color:r.colorHex}}>{r.realTime}</p>
+              </div>
+            </div>
+          );
+        })()}
+        <Button fullWidth onClick={handleStartRoute} loading={starting} className="py-4 shadow-2xl relative z-[100]" style={{background:'linear-gradient(135deg,#00C896,#00A87E)'}}>
+          <Navigation size={20} strokeWidth={3} /> Iniciar navegación →
+        </Button>
       </div>
     </div>
   );
@@ -1312,11 +1369,15 @@ const LiveMapComponent = ({ darkMode, onNavigateToRutas }) => {
   const { alertas, cargando, ultimaActualizacion, refetch } = useTrafficAlerts();
   const user = useMemo(() => storage.get('rv_user', { city: 'Santiago' }), []);
 
+  const [paso, setPaso] = useState(0); // 0=mapa libre, 1=destino confirmado, 2=eligiendo modo
+  const [nombreDestino, setNombreDestino] = useState('');
+  const [modoElegido, setModoElegido] = useState(null);
+  const [centerTrigger, setCenterTrigger] = useState(0);
+
   const MODOS_RAPIDOS = [
+    { id: 'caminata', emoji: '🚶', label: 'Pie' },
     { id: 'bici', emoji: '🚴', label: 'Bici' },
-    { id: 'scooter', emoji: '🛴', label: 'Scooter' },
     { id: 'metro', emoji: '🚇', label: 'Metro' },
-    { id: 'micro', emoji: '🚌', label: 'Micro' },
   ];
 
   // Contar alertas importantes para el badge
@@ -1329,6 +1390,7 @@ const LiveMapComponent = ({ darkMode, onNavigateToRutas }) => {
   return (
     <div className="h-full -mx-5 -mt-8 flex flex-col relative overflow-hidden">
       <div className="flex-grow relative h-full leaflet-container-wrapper">
+
         <CityMap
           showMetro={layers.metro || modoFiltro === 'metro'}
           showBici={layers.bici || modoFiltro === 'bici'}
@@ -1338,161 +1400,123 @@ const LiveMapComponent = ({ darkMode, onNavigateToRutas }) => {
           alertasCoords={alertas.filter(a => a.lat && a.lon)}
           modoTransporte={modoFiltro}
           destination={destSeleccionado}
+          centerTrigger={centerTrigger}
           onSearchSelect={(coords, nombre) => {
+            if (!coords) return;
             setDestSeleccionado(coords);
+            setNombreDestino(nombre || 'Destino seleccionado');
+            setPaso(1);
           }}
         />
-        {destSeleccionado && (
-          <div className="absolute bottom-28 left-4 right-4 z-[1000]">
-            <button
-              onClick={() => { if (onNavigateToRutas) onNavigateToRutas(destSeleccionado); }}
-              className="w-full py-4 bg-[#00C896] text-white font-black text-sm rounded-2xl shadow-2xl flex items-center justify-center gap-2 active:scale-95 transition-all"
-            >
-              <Navigation size={18} /> Ver rutas hacia este destino
-            </button>
-          </div>
-        )}
 
-        {/* FILTROS DE MODO — debajo del buscador */}
+        {/* FILTROS MODO — top-20, debajo del buscador */}
         <div className="absolute top-20 left-4 right-4 flex gap-2 z-[900] overflow-x-auto no-scrollbar">
           {MODOS_RAPIDOS.map(m => (
-            <button
-              key={m.id}
+            <button key={m.id}
               onClick={() => setModoFiltro(prev => prev === m.id ? null : m.id)}
-              className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all border whitespace-nowrap flex items-center gap-1
-                ${modoFiltro === m.id
-                  ? 'bg-[#00C896] text-white border-[#00C896]'
-                  : 'bg-white/90 text-[#1A1A2E] border-gray-100 backdrop-blur-sm dark:bg-slate-800/90 dark:text-white dark:border-slate-700'
-                }`}
-            >
+              className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all border whitespace-nowrap flex items-center gap-1
+                ${modoFiltro === m.id ? 'bg-[#00C896] text-white border-[#00C896]' : 'bg-white/90 text-[#1A1A2E] border-gray-100 backdrop-blur-sm dark:bg-slate-800/90 dark:text-white dark:border-slate-700'}`}>
               {m.emoji} {m.label}
             </button>
           ))}
-        </div>
-
-        {/* TOGGLE CAPAS */}
-        <div className="absolute top-6 left-4 right-4 flex gap-2 z-[1000] overflow-x-auto no-scrollbar">
-          {Object.entries(layers).map(([key, val]) => (
-            <button
-              key={key}
-              onClick={() => setLayers({ ...layers, [key]: !val })}
-              className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all border whitespace-nowrap
-                ${val
-                  ? 'bg-[#1A1A2E] text-white border-[#1A1A2E]'
-                  : 'bg-white text-[#1A1A2E] border-gray-100 dark:bg-slate-800 dark:text-white dark:border-slate-700'
-                }`}
-            >
-              {key}
-            </button>
-          ))}
-
-          {/* BOTÓN ALERTAS con badge de incidentes importantes */}
-          <button
-            onClick={() => setShowAlerts(!showAlerts)}
-            className="relative px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all border bg-red-500 text-white shrink-0"
-          >
-            {cargando ? '⏳' : '⚠️'} Alertas
+          <button onClick={() => setShowAlerts(!showAlerts)}
+            className="relative px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl border bg-red-500 text-white shrink-0 whitespace-nowrap">
+            ⚠️ Alertas
             {alertasImportantes > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white text-red-500 rounded-full text-[9px] font-black flex items-center justify-center border-2 border-red-500">
-                {alertasImportantes}
-              </span>
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-white text-red-500 rounded-full text-[8px] font-black flex items-center justify-center border border-red-500">{alertasImportantes}</span>
             )}
           </button>
         </div>
 
         {/* BOTÓN CENTRAR */}
-        <button className="absolute bottom-24 right-4 z-[1000] w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-2xl border border-gray-100 dark:border-slate-700 text-[#00C896]">
-          <Locate size={22} />
+        <button onClick={() => setCenterTrigger(t => t + 1)}
+          className={`absolute right-4 z-[1500] w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-2xl border border-gray-100 dark:border-slate-700 text-[#00C896] active:scale-95 transition-all ${paso > 0 ? 'bottom-[260px]' : 'bottom-8'}`}>
+          <Locate size={20} />
         </button>
 
-        {/* PANEL DE ALERTAS — slide desde la derecha */}
-        <div className={`absolute top-0 right-0 h-full w-[85%] max-w-xs bg-white dark:bg-slate-900 z-[2000] shadow-2xl transition-transform duration-400 ease-out border-l border-gray-100 dark:border-slate-800 flex flex-col
-          ${showAlerts ? 'translate-x-0' : 'translate-x-full'}`}
-        >
-          {/* Header del panel */}
+        {/* PANEL DE ALERTAS */}
+        <div className={`absolute top-[68px] right-0 bottom-0 w-[85%] max-w-xs bg-white dark:bg-slate-900 z-[2000] shadow-2xl transition-transform duration-300 ease-out border-l border-gray-100 dark:border-slate-800 flex flex-col ${showAlerts ? 'translate-x-0' : 'translate-x-full'}`}>
           <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-slate-800 shrink-0">
             <div>
               <h3 className="font-black text-lg text-[#0D1B2A] dark:text-white">Alertas en vivo</h3>
-              {horaActualizacion && (
-                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
-                  Actualizado {horaActualizacion} · TomTom
-                </p>
-              )}
+              {horaActualizacion && <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Actualizado {horaActualizacion} · TomTom</p>}
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={refetch}
-                className="w-8 h-8 bg-gray-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-gray-500 hover:text-[#00C896] transition-colors"
-                title="Actualizar"
-              >
-                <TrendingUp size={14} />
-              </button>
-              <button
-                onClick={() => setShowAlerts(false)}
-                className="w-8 h-8 bg-gray-100 dark:bg-slate-800 rounded-xl flex items-center justify-center"
-              >
-                <X size={16} />
-              </button>
-            </div>
+            <button onClick={() => setShowAlerts(false)} className="w-8 h-8 bg-gray-100 dark:bg-slate-800 rounded-xl flex items-center justify-center"><X size={16} /></button>
           </div>
-
-          {/* Lista de alertas */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {cargando ? (
-              // Skeleton loader
-              Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800 animate-pulse">
-                  <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded w-3/4 mb-2" />
-                  <div className="h-2 bg-gray-200 dark:bg-slate-700 rounded w-1/2" />
-                </div>
-              ))
-            ) : (
-              alertas.map((a) => (
-                <div
-                  key={a.id}
-                  className={`p-4 rounded-2xl border transition-all
-                    ${a.severity === 'error'
-                      ? 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800/30'
-                      : a.severity === 'warning'
-                      ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-100 dark:border-yellow-800/30'
-                      : 'bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-800/30'
-                    }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="text-xl shrink-0 mt-0.5">{a.emoji}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-[#0D1B2A] dark:text-white leading-snug truncate">
-                        {a.calle && <span className="text-[#00C896]">{a.calle}: </span>}
-                        {a.texto}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1.5">
-                        <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full
-                          ${a.status === 'Importante' ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
-                          : a.status === 'OK' ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400'
-                          : 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/40 dark:text-yellow-400'}`}
-                        >
-                          {a.status}
-                        </span>
-                        {a.delay && (
-                          <span className="text-[8px] font-bold text-gray-500">
-                            +{a.delay} min de retraso
-                          </span>
-                        )}
-                      </div>
-                    </div>
+            {alertas.map(a => (
+              <div key={a.id} className={`p-4 rounded-2xl border ${a.severity==='error'?'bg-red-50 border-red-100':a.severity==='warning'?'bg-yellow-50 border-yellow-100':'bg-green-50 border-green-100'}`}>
+                <div className="flex items-start gap-3">
+                  <span className="text-xl shrink-0">{a.emoji}</span>
+                  <div>
+                    <p className="text-xs font-bold text-[#0D1B2A]">{a.calle && <span className="text-[#00C896]">{a.calle}: </span>}{a.texto}</p>
+                    {a.delay && <p className="text-[8px] font-bold text-gray-500 mt-1">+{a.delay} min de retraso</p>}
                   </div>
                 </div>
-              ))
-            )}
-          </div>
-
-          {/* Footer con créditos */}
-          <div className="p-4 border-t border-gray-100 dark:border-slate-800 shrink-0">
-            <p className="text-[8px] font-bold text-gray-400 text-center uppercase tracking-widest">
-              Datos: TomTom Traffic™ · Se actualiza cada 2 min
-            </p>
+              </div>
+            ))}
           </div>
         </div>
+
+        {/* ══ BOTTOM SHEET PASO 1: CONFIRMACIÓN DE DESTINO ══ */}
+        {paso === 1 && (
+          <div className="absolute bottom-0 left-0 right-0 z-[1500] bg-white dark:bg-slate-900 rounded-t-[32px] shadow-2xl px-5 pt-4 pb-32 animate-slide-up">
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+            <div className="flex items-start gap-3 mb-5">
+              <div className="w-12 h-12 bg-[#00C896]/10 rounded-2xl flex items-center justify-center shrink-0">
+                <MapPin size={22} className="text-[#00C896]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Destino seleccionado</p>
+                <p className="font-black text-base text-[#0D1B2A] dark:text-white leading-tight truncate">{nombreDestino}</p>
+              </div>
+              <button onClick={() => { setDestSeleccionado(null); setNombreDestino(''); setPaso(0); }}
+                className="w-9 h-9 bg-gray-100 dark:bg-slate-800 rounded-xl flex items-center justify-center shrink-0">
+                <X size={16} className="text-gray-500" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => { setDestSeleccionado(null); setNombreDestino(''); setPaso(0); }}
+                className="py-3.5 rounded-2xl font-black text-sm text-gray-500 border-2 border-gray-100 dark:border-slate-700 dark:text-slate-400 active:scale-95 transition-all">
+                Cancelar
+              </button>
+              <button onClick={() => setPaso(2)}
+                className="py-3.5 rounded-2xl font-black text-sm text-white active:scale-95 transition-all shadow-lg shadow-green-500/30 flex items-center justify-center gap-2"
+                style={{background:'linear-gradient(135deg,#00C896,#00A87E)'}}>
+                <Navigation size={16} /> Confirmar →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ══ BOTTOM SHEET PASO 2: ELEGIR MODO ══ */}
+        {paso === 2 && (
+          <div className="absolute bottom-0 left-0 right-0 z-[1500] bg-white dark:bg-slate-900 rounded-t-[32px] shadow-2xl px-5 pt-4 pb-32 animate-slide-up">
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+            <h3 className="font-black text-sm text-center text-[#1A1A2E] dark:text-white mb-6 uppercase tracking-widest">¿Cómo quieres viajar?</h3>
+            <div className="flex justify-between items-center mb-8 gap-2">
+              {MODOS_RAPIDOS.map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => setModoElegido(m.id)}
+                  className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-2xl transition-all border-2
+                    ${modoElegido === m.id ? 'border-[#00C896] bg-green-50 dark:bg-green-900/20' : 'border-gray-50 dark:border-slate-800 bg-gray-50 dark:bg-slate-800'}`}
+                >
+                  <span className="text-2xl">{m.emoji}</span>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">{m.label}</span>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => { if(onNavigateToRutas) onNavigateToRutas(destSeleccionado, modoElegido); }}
+              disabled={!modoElegido}
+              className={`w-full py-4 rounded-2xl font-black text-sm text-white flex items-center justify-center gap-2 transition-all shadow-lg
+                ${modoElegido ? 'bg-gradient-to-r from-[#00C896] to-[#00A87E] shadow-green-500/30' : 'bg-gray-300 cursor-not-allowed opacity-50'}`}
+            >
+              <ArrowLeftRight size={18} /> Ver Rutas Disponibles
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -2064,6 +2088,7 @@ export default function RutaVerde() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [redeeming, setRedeeming] = useState(null);
   const [destCoords, setDestCoords] = useState(null);
+  const [initialMode, setInitialMode] = useState(null);
   const [navegacionActiva, setNavegacionActiva] = useState(false);
   const [rutaActiva, setRutaActiva] = useState(null);
   const { pos: userPos } = useGeolocalizacion();
@@ -2136,10 +2161,12 @@ export default function RutaVerde() {
     setActiveTab('rutas');
   };
 
-  const handleNavigate = (tab, coords = null) => {
+  const handleNavigate = (tab, coords = null, mode = null) => {
     setActiveTab(tab);
     if (coords) setDestCoords(coords);
     else if (tab !== 'rutas') setDestCoords(null);
+    if (mode) setInitialMode(mode);
+    else if (tab !== 'rutas') setInitialMode(null);
   };
 
   const handleLogoClick = () => {
@@ -2296,9 +2323,10 @@ export default function RutaVerde() {
                     onStart={handleStartRoute}
                     destination={destCoords}
                     darkMode={darkMode}
+                    initialMode={initialMode}
                   />
                 )}
-                {activeTab === 'mapa' && <LiveMapScreen darkMode={darkMode} onNavigateToRutas={(coords) => { setDestCoords(coords); setActiveTab('rutas'); }} />}
+                {activeTab === 'mapa' && <LiveMapScreen darkMode={darkMode} onNavigateToRutas={(coords, mode) => { setDestCoords(coords); setInitialMode(mode); setActiveTab('rutas'); }} />}
                 {activeTab === 'puntos' && <GamificationScreen points={stats.points} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} co2Total={stats.co2Total} />}
                 {activeTab === 'perfil' && <ProfileScreen user={user} stats={stats} onLogout={handleLogout} darkMode={darkMode} setDarkMode={setDarkMode} />}
               </Suspense>

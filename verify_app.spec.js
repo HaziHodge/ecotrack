@@ -17,7 +17,7 @@ test('RUTA VERDE Full Flow Verification', async ({ page }) => {
   await expect(page.locator('.leaflet-container').first()).toBeVisible({ timeout: 15000 });
 
   // 4. Start Route
-  await page.click('button:has-text("Iniciar ruta")');
+  await page.click('button:has-text("Iniciar navegación")');
   // Check for navigation toast
   await expect(page.locator('text=/Navegando/i')).toBeVisible();
 
