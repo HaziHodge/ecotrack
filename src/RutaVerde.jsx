@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, Suspense, lazy, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import {
   Home, Map as MapIcon, Milestone, Award, User, Search, ArrowLeftRight,
   Leaf, Star, Zap, Navigation, Bell, ChevronRight, CheckCircle2,
@@ -700,7 +701,15 @@ function NavegacionActivaScreen({ ruta, userPos, onFinalizar, onCancelar, darkMo
           <div><p className="text-2xl font-black">{ruta.time} min</p><p className="text-[10px] font-black text-gray-400 uppercase">Restante</p></div>
           <div className="text-right"><p className="text-2xl font-black text-[#00C896]">{ruta.distanciaKm} km</p><p className="text-[10px] font-black text-gray-400 uppercase">Distancia</p></div>
         </div>
-        <Button fullWidth onClick={onFinalizar} className="py-5 shadow-xl">¡Llegué! Finalizar viaje 🎉</Button>
+        <div className="flex flex-col gap-3">
+          <Button fullWidth onClick={onFinalizar} className="py-4 shadow-xl">¡He llegado! Finalizar viaje 🎉</Button>
+          <button
+            onClick={onCancelar}
+            className="w-full py-3 rounded-xl bg-gray-50 text-gray-400 text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 transition-colors"
+          >
+            Finalizar viaje anticipado
+          </button>
+        </div>
       </div>
     </div>
   );
