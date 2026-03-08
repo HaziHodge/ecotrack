@@ -73,6 +73,74 @@ const Button = ({ children, onClick, variant = 'primary', className = "", fullWi
   );
 };
 
+const RouteCard = ({ route, selected, onSelect }) => (
+  <div
+    onClick={onSelect}
+    style={{
+      background: selected ? '#1a2f26' : '#21262D',
+      border: `2px solid ${selected
+        ? route.badgeColor : '#30363D'}`,
+      borderRadius: '14px',
+      padding: '14px',
+      marginBottom: '10px',
+      cursor: 'pointer',
+      transition: 'all 0.2s'
+    }}
+  >
+    <div style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: '8px'
+    }}>
+      <div>
+        <div style={{ color: '#F0F6FC', fontWeight: '600', fontSize: '15px' }}>
+          {route.nombre}
+        </div>
+        <div style={{ color: '#8B949E', fontSize: '12px', marginTop: '2px' }}>
+          {route.descripcion}
+        </div>
+      </div>
+      <span style={{
+        background: route.badgeColor + '20',
+        color: route.badgeColor,
+        border: `1px solid ${route.badgeColor}50`,
+        borderRadius: '20px',
+        padding: '3px 10px',
+        fontSize: '10px',
+        fontWeight: '700'
+      }}>
+        {route.badge}
+      </span>
+    </div>
+
+    <div style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>
+      {route.iconos.map((ic, i) => (
+        <span key={i} style={{ fontSize: '18px' }}>{ic}</span>
+      ))}
+    </div>
+
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px' }}>
+      {[
+        { valor: route.tiempo + ' min', label: 'TIEMPO', color: '#F0F6FC' },
+        { valor: route.precio, label: 'PRECIO', color: '#F0F6FC' },
+        { valor: route.co2, label: 'CO₂', color: route.co2Color }
+      ].map(m => (
+        <div key={m.label} style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '15px', fontWeight: '700', color: m.color }}>{m.valor}</div>
+          <div style={{ fontSize: '10px', color: '#8B949E' }}>{m.label}</div>
+        </div>
+      ))}
+    </div>
+
+    {selected && (
+      <div style={{ marginTop: '10px', textAlign: 'center', color: route.badgeColor, fontSize: '13px', fontWeight: '600' }}>
+        ✓ Seleccionada — toca "Iniciar" abajo
+      </div>
+    )}
+  </div>
+);
+
 // --- UTILS & HOOKS (Inlined) ---
 
 /**
@@ -515,13 +583,13 @@ const CityMap = ({
     finally { setFetchingRoute(false); }
   }, [pos, onSearchSelect]);
 
-  // Solo re-centra cuando cambia destino (no en cada render)
+  // Solo re-centra cuando cambia destino (no en cada render) — FIX #3
   const RecenterOnDest = ({ dest }) => {
     const map = useMap();
     const prev = useRef(null);
     useEffect(() => {
       if (dest && JSON.stringify(dest) !== JSON.stringify(prev.current)) {
-        map.setView(dest, 15, { animate: true });
+        map.flyTo(dest, 15, { duration: 1.5 });
         prev.current = dest;
       }
     }, [dest]);
@@ -544,76 +612,16 @@ const CityMap = ({
   const pts = routePreview || localRoutePoints;
 
   return (
-    <div className={`relative bg-[#F8FAF9] dark:bg-slate-900 w-full h-full overflow-hidden ${className}`}>
-
-      {/* ── BUSCADOR ── z-[2000] para estar SOBRE todo lo demás */}
-      <div className="absolute top-3 left-3 right-3 z-[2000]">
-        <div className={`bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border flex items-center gap-2 px-4 py-3
-          ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
-          {searchBusy
-            ? <div className="w-4 h-4 border-2 border-[#00C896] border-t-transparent rounded-full animate-spin shrink-0" />
-            : <Search size={16} className="text-[#00C896] shrink-0" />
-          }
-          <input
-            ref={searchRef}
-            type="text"
-            placeholder="¿A dónde vas?"
-            value={mapQuery}
-            onChange={e => handleMapSearch(e.target.value)}
-            className="bg-transparent flex-1 text-sm font-bold text-gray-900 dark:text-white placeholder:text-gray-400 placeholder:font-normal outline-none"
-          />
-          {mapQuery.length > 0 && (
-            <button
-              onClick={() => { setMapQuery(''); setMapSuggestions([]); setLocalRoutePoints([]); }}
-              className="text-gray-400 hover:text-gray-600 shrink-0"
-            >
-              <X size={14} />
-            </button>
-          )}
-        </div>
-
-        {/* Sugerencias */}
-        {mapSuggestions.length > 0 && (
-          <div className="mt-1 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden">
-            {mapSuggestions.slice(0, 5).map((s, i) => (
-              <div
-                key={i}
-                onClick={() => handleSelectSuggestion(s)}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-green-50 dark:hover:bg-slate-700 cursor-pointer border-b border-gray-50 dark:border-slate-700 last:border-none transition-colors active:bg-green-100"
-              >
-                <MapPin size={14} className="text-[#00C896] shrink-0" />
-                <div className="min-w-0">
-                  <p className="font-bold text-xs text-gray-900 dark:text-white truncate">
-                    {s.display_name.split(',')[0]}
-                  </p>
-                  <p className="text-[10px] text-gray-400 truncate">
-                    {s.display_name.split(',').slice(1, 3).join(', ').trim()}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Cargando ruta preview */}
-        {fetchingRoute && (
-          <div className="mt-1 bg-white dark:bg-slate-800 rounded-xl px-4 py-2 shadow-lg border border-gray-100 dark:border-slate-700 flex items-center gap-2">
-            <div className="w-3 h-3 border-2 border-[#00C896] border-t-transparent rounded-full animate-spin" />
-            <span className="text-[10px] font-bold text-gray-500">Calculando ruta...</span>
-          </div>
-        )}
-      </div>
+    <div className={`relative bg-[#0D1117] w-full h-full overflow-hidden ${className}`}>
 
       {/* Botón centrar en usuario */}
       <button
         id="rvCenterTrigger"
         onClick={() => {
           destTrigger.current = 0;
-          // trigger CenterOnUser via incrementing centerTrigger if it was passed as prop,
-          // or handle locally if we want to force re-center
-          if (onSearchSelect) onSearchSelect(null, null); // clear destination to refocus
+          if (onSearchSelect) onSearchSelect(null, null);
         }}
-        className="absolute bottom-6 right-4 z-[1500] w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-2xl border border-gray-100 dark:border-slate-700 text-[#00C896] active:scale-95 transition-all"
+        className="absolute bottom-20 right-4 z-[1500] w-12 h-12 bg-[#161B22] rounded-2xl flex items-center justify-center shadow-2xl border border-[#30363D] text-[#00C896] active:scale-95 transition-all"
       >
         <Locate size={20} />
       </button>
@@ -844,42 +852,18 @@ const ConfettiEffect = ({ onComplete }) => {
 };
 
 // Dynamic imports for screens
-const HomeScreen = ({ user, onNavigate, stats, darkMode, alertas, alertasCargando }) => <HomeComponent user={user} onNavigate={onNavigate} stats={stats} darkMode={darkMode} alertas={alertas} alertasCargando={alertasCargando} />;
+const HomeScreen = ({ user, onNavigate, stats, darkMode, alertas, alertasCargando }) => <HomeComponent user={user} onNavigate={onNavigate} stats={stats} alertas={alertas} alertasCargando={alertasCargando} />;
 const RoutePlanner = ({ onStart, destination, destName, darkMode }) => <RoutePlannerComponent onStart={onStart} destination={destination} destName={destName} darkMode={darkMode} />;
-const LiveMapScreen = ({ darkMode, onNavigateToRutas }) => <LiveMapComponent darkMode={darkMode} onNavigateToRutas={onNavigateToRutas} />;
 const GamificationScreen = ({ points, showToast, redeeming, setRedeeming, co2Total }) => <GamificationComponent points={points} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} co2Total={co2Total} />;
 const ProfileScreen = ({ user, stats, onLogout, darkMode, setDarkMode }) => <ProfileComponent user={user} stats={stats} onLogout={onLogout} darkMode={darkMode} setDarkMode={setDarkMode} />;
 
 // --- PANTALLAS ---
 
-const HomeComponent = ({ user, onNavigate, stats, darkMode, alertas, alertasCargando }) => {
-  const getMensaje = (nombre) => {
-    const h = new Date().getHours();
-    if (h < 9) return `Buenos días, ${nombre}. ¿Vamos en metro hoy? 🚇`;
-    if (h < 14) return `¡Buen día! Cada viaje sostenible cuenta, ${nombre}. 🌿`;
-    if (h < 19) return `¿Vuelta a casa en bici, ${nombre}? 🚴`;
-    return `Terminaste el día con ${stats.co2Total.toFixed(1)}kg menos de CO₂. ¡Bien! 🌱`;
-  };
-
-  const usuariosSimulados = 47 + (Math.floor(Date.now() / 86400000) % 30);
-
+const HomeComponent = ({ user, onNavigate, stats, alertas, alertasCargando }) => {
   const [from, setFrom] = useState("Tu ubicación");
   const [search, setSearch] = useState("");
   const [suggestions, setSuggestions] = useState([]);
-  const [isShaking, setIsShaking] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [swapping, setSwapping] = useState(false);
-
-  const handleRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1500);
-  };
-
-  const suggestedRoutes = [
-    { id: 1, name: "Tobalaba", time: "12 min", mode: <Train size={14} />, co2: "Muy bajo", color: "bg-green-100 text-green-700" },
-    { id: 2, name: "Costanera Center", time: "25 min", mode: <Bike size={14} />, co2: "Zero", color: "bg-blue-100 text-blue-700" },
-    { id: 3, name: "Parque Arauco", time: "40 min", mode: <Car size={14} />, co2: "Medio", color: "bg-yellow-100 text-yellow-700" },
-  ];
+  const usuariosSimulados = 47 + (Math.floor(Date.now() / 86400000) % 30);
 
   const handleSearch = async (query) => {
     setSearch(query);
@@ -889,18 +873,7 @@ const HomeComponent = ({ user, onNavigate, stats, darkMode, alertas, alertasCarg
         const data = await res.json();
         setSuggestions(data);
       } catch (e) { console.error(e); }
-    } else {
-      setSuggestions([]);
-    }
-  };
-
-  const onSearchSubmit = (coords = null) => {
-    if (!search) {
-      setIsShaking(true);
-      setTimeout(() => setIsShaking(false), 500);
-      return;
-    }
-    onNavigate('rutas', coords);
+    } else { setSuggestions([]); }
   };
 
   const alertaPrincipal = alertas?.find(a => a.severity === 'error')
@@ -908,188 +881,110 @@ const HomeComponent = ({ user, onNavigate, stats, darkMode, alertas, alertasCarg
     || alertas?.[0];
 
   return (
-    <div className={`space-y-6 pb-40 animate-fade-in transition-transform duration-300 relative ${refreshing ? 'translate-y-12' : ''}`}>
-      {refreshing && (
-        <div className="absolute top-0 left-0 right-0 flex justify-center -translate-y-10">
-           <div className="w-8 h-8 border-4 border-[#00C896] border-t-transparent rounded-full animate-spin"></div>
+    <div className="space-y-6 px-6 py-6 animate-fade-in relative z-10">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-black text-white leading-tight">Hola, {user.name.split(' ')[0]} 👋</h1>
+        <div className="flex items-center gap-2">
+          <p className="text-[#8B949E] text-xs font-bold flex items-center gap-1"><MapPin size={12} className="text-[#00C896]" /> {user.city}, Chile</p>
+          <span className="bg-[#00C896]/10 text-[#00C896] text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">{usuariosSimulados} activos</span>
         </div>
-      )}
-      <header className="flex justify-between items-start" onClick={handleRefresh}>
-        <div className="max-w-[70%]">
-          <h1 className="text-3xl font-black text-[#0D1B2A] dark:text-white leading-tight tracking-tight">Hola, {user.name} 👋</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <p className="text-[#4B5563] dark:text-slate-400 flex items-center gap-1 font-bold"><MapPin size={14} className="text-[#00C896]" /> {user.city}, Chile</p>
-            <span className="bg-[#00C896]/10 text-[#00C896] text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">{usuariosSimulados} activos</span>
-          </div>
-        </div>
-        <button className="relative w-14 h-14 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-xl border border-gray-50 dark:border-slate-700 transition-transform hover:scale-110 active:scale-95">
-          <Bell size={24} className="text-[#1A1A2E] dark:text-white" />
-          <span className="absolute top-4 right-4 w-3 h-3 bg-[#FF6B6B] rounded-full border-2 border-white dark:border-slate-800"></span>
-        </button>
-      </header>
+      </div>
 
-      <Card className={`!p-6 space-y-4 relative overflow-visible ${isShaking ? 'animate-shake' : ''}`} delay={100}>
-        <div className="space-y-3 relative">
-          <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800/50 rounded-2xl border border-gray-100 dark:border-slate-700 focus-within:border-[#00C896] transition-all">
-            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-            <input
-              type="text"
-              placeholder="¿Desde dónde?"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              className="bg-transparent w-full focus:outline-none text-[#0D1B2A] dark:text-white font-bold placeholder:text-gray-400 dark:placeholder:text-slate-600"
-            />
+      <div style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: '16px' }} className="p-4 space-y-3 relative">
+        <div className="space-y-2">
+          <div style={{ background: '#21262D' }} className="flex items-center gap-3 p-3 rounded-xl border border-[#30363D]">
+            <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
+            <input type="text" readOnly value={from} className="bg-transparent w-full outline-none text-white text-sm font-bold" />
           </div>
 
-          <button
-            onClick={() => {
-              setSwapping(true);
-              const tmp = from; setFrom(search); setSearch(tmp);
-              setTimeout(() => setSwapping(false), 500);
-            }}
-            className={`absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-full shadow-lg border border-gray-100 dark:border-slate-700 flex items-center justify-center text-[#00C896] z-10 transition-all duration-500 ${swapping ? 'rotate-180 scale-125' : 'hover:rotate-180'}`}
-          >
-            <ArrowLeftRight size={18} className={`rotate-90 transition-transform ${swapping ? 'scale-75' : ''}`} />
-          </button>
-
-          <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800/50 rounded-2xl border border-gray-100 dark:border-slate-700 focus-within:border-[#00C896] transition-all relative">
-            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+          <div style={{ background: '#21262D' }} className="flex items-center gap-3 p-3 rounded-xl border border-[#30363D] relative">
+            <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
             <input
               type="text"
               placeholder="¿A dónde?"
               value={search}
               onChange={(e) => handleSearch(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && onSearchSubmit()}
-              className="bg-transparent w-full focus:outline-none text-[#0D1B2A] dark:text-white font-bold placeholder:text-gray-400 dark:placeholder:text-slate-600"
+              className="bg-transparent w-full outline-none text-white text-sm font-bold placeholder:text-[#484f58]"
             />
             {suggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 bg-white dark:bg-slate-800 shadow-2xl rounded-2xl mt-2 z-[1000] border border-gray-100 dark:border-slate-700 overflow-hidden">
-                {suggestions.map((s, idx) => (
-                  <div key={idx} onClick={() => {
-                    setSearch(s.display_name.split(',')[0]);
-                    setSuggestions([]);
-                    onNavigate('rutas', [parseFloat(s.lat), parseFloat(s.lon)]);
-                  }} className="p-4 hover:bg-green-50 dark:hover:bg-green-900/20 cursor-pointer border-b border-gray-50 dark:border-slate-700 last:border-none">
-                    <p className="font-bold text-sm text-[#0D1B2A] dark:text-white truncate">{s.display_name}</p>
+              <div className="absolute top-full left-0 right-0 bg-[#161B22] border border-[#30363D] shadow-2xl rounded-xl mt-1 z-[100] overflow-hidden">
+                {suggestions.map((s, i) => (
+                  <div key={i} onClick={() => { setSearch(s.display_name.split(',')[0]); setSuggestions([]); onNavigate('mapa', [parseFloat(s.lat), parseFloat(s.lon)], s.display_name.split(',')[0]); }} className="p-3 hover:bg-[#21262D] cursor-pointer border-b border-[#30363D] last:border-none">
+                    <p className="font-bold text-xs text-white truncate">{s.display_name}</p>
                   </div>
                 ))}
               </div>
             )}
           </div>
         </div>
-        <Button fullWidth onClick={onSearchSubmit}><Search size={22} strokeWidth={3} /> Buscar ruta</Button>
-      </Card>
+
+        <button onClick={() => { const tmp = from; setFrom(search); setSearch(tmp); }} className="absolute right-8 top-1/2 -translate-y-8 w-8 h-8 bg-[#21262D] border border-[#30363D] rounded-full flex items-center justify-center text-[#00C896] z-20">
+          <ArrowLeftRight size={14} className="rotate-90" />
+        </button>
+
+        <Button fullWidth onClick={() => onNavigate('mapa')} className="!py-3.5"><Search size={18} strokeWidth={3} /> Buscar ruta</Button>
+      </div>
 
       <div className="flex justify-between items-center px-2">
-        {[{ icon: <Navigation size={20} />, label: 'Trabajo' }, { icon: <Home size={20} />, label: 'Casa' }, { icon: <Heart size={20} />, label: 'Gym' }, { icon: <X size={20} className="rotate-45" />, label: 'Más' }].map((item, i) => (
-          <div key={i} className="flex flex-col items-center gap-2 group cursor-pointer" onClick={() => onNavigate('rutas')}>
-            <div className="w-14 h-14 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-lg border border-gray-100 dark:border-slate-700 group-hover:bg-[#00C896] group-hover:text-white transition-all text-[#1A1A2E] dark:text-white">{item.icon}</div>
-            <span className="text-[10px] font-black uppercase text-[#6B7280] dark:text-slate-500 tracking-widest">{item.label}</span>
+        {[{ icon: <Navigation size={18} />, label: 'Trabajo' }, { icon: <Home size={18} />, label: 'Casa' }, { icon: <Heart size={18} />, label: 'Gym' }].map((item, i) => (
+          <div key={i} className="flex flex-col items-center gap-2 cursor-pointer" onClick={() => onNavigate('mapa')}>
+            <div className="w-12 h-12 bg-[#161B22] border border-[#30363D] rounded-full flex items-center justify-center text-white">{item.icon}</div>
+            <span className="text-[9px] font-black uppercase text-[#8B949E] tracking-widest">{item.label}</span>
           </div>
         ))}
       </div>
 
-      <h2 className="text-xl font-black text-[#0D1B2A] dark:text-white tracking-tight">{getMensaje(user.name.split(' ')[0])}</h2>
-
-      <div className="bg-[#00C896]/10 p-3 rounded-2xl flex items-center gap-2 border border-[#00C896]/20">
-         <div className="w-8 h-8 bg-[#00C896] rounded-full flex items-center justify-center text-white shrink-0 shadow-lg shadow-green-500/20">
-            <CheckCircle2 size={14} />
-         </div>
-         <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-400">
-            Ahorraste {metricas.generarComparativaViral(stats.co2Total)} hoy.
+      <div className="bg-[#00C896]/5 p-4 rounded-2xl border border-[#00C896]/10">
+         <p className="text-xs font-bold text-[#00C896] leading-relaxed text-center">
+            Terminaste el día con 1.1kg menos de CO₂. ¡Bien! 🌱
          </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="text-center !p-4 bg-gradient-to-br from-[#1A1A2E] to-[#16213E] text-white overflow-hidden relative border-none" delay={200}>
-          <p className="text-2xl font-black text-[#00C896] z-10 relative"><CountUp end={stats.co2Total} decimals={1} /></p>
-          <p className="text-[9px] opacity-60 uppercase tracking-widest font-black mt-1 z-10 relative">KG CO₂</p>
-          <Leaf className="absolute -bottom-4 -right-4 text-[#00C896]/10 rotate-12 animate-float" size={60} />
-        </Card>
-        <Card className="text-center !p-4 bg-gradient-to-br from-[#1A1A2E] to-[#16213E] text-white overflow-hidden relative border-none" delay={300}>
-          <p className="text-2xl font-black text-[#FFD93D] z-10 relative"><CountUp end={stats.points} /></p>
-          <p className="text-[9px] opacity-60 uppercase tracking-widest font-black mt-1 z-10 relative">PTS</p>
-          <Star className="absolute -bottom-4 -right-4 text-white/5 rotate-12" size={60} />
-        </Card>
-        <Card className="text-center !p-4 bg-gradient-to-br from-[#1A1A2E] to-[#16213E] text-white overflow-hidden relative border-none" delay={400}>
-          <p className="text-2xl font-black text-blue-400 z-10 relative"><CountUp end={stats.kmTotal} decimals={1} /></p>
-          <p className="text-[9px] opacity-60 uppercase tracking-widest font-black mt-1 z-10 relative">KM</p>
-          <Navigation className="absolute -bottom-4 -right-4 text-white/5 rotate-12" size={60} />
-        </Card>
+      <div className="space-y-3">
+        <h3 className="text-xs font-black text-[#8B949E] uppercase tracking-widest flex items-center gap-2"><Wind size={14} /> Impacto de hoy</h3>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { v: '2.4', l: 'KG CO₂', c: 'text-[#00C896]' },
+            { v: '340', l: 'PTS', c: 'text-[#FFD93D]' },
+            { v: '12.5', l: 'KM', c: 'text-blue-400' }
+          ].map(m => (
+            <div key={m.l} className="bg-[#161B22] border border-[#30363D] p-3 rounded-2xl text-center">
+              <p className={`text-lg font-black ${m.c}`}>{m.v}</p>
+              <p className="text-[8px] font-black text-[#8B949E] mt-0.5">{m.l}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {alertaPrincipal && (
-        <div className={`p-4 rounded-2xl flex items-center gap-4 animate-pulse border
+        <div className={`p-4 rounded-2xl flex items-center gap-4 border
           ${alertaPrincipal.severity === 'error'
-            ? 'bg-[#FF6B6B]/10 dark:bg-red-900/20 border-[#FF6B6B]/20'
+            ? 'bg-[#FF6B6B]/10 border-[#FF6B6B]/20'
             : alertaPrincipal.severity === 'warning'
-            ? 'bg-yellow-500/10 dark:bg-yellow-900/20 border-yellow-500/20'
-            : 'bg-[#00C896]/10 dark:bg-green-900/20 border-[#00C896]/20'
+            ? 'bg-yellow-500/10 border-yellow-500/20'
+            : 'bg-[#00C896]/10 border-[#00C896]/20'
           }`}
         >
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 shadow-lg
-            ${alertaPrincipal.severity === 'error' ? 'bg-[#FF6B6B] shadow-red-500/20'
-            : alertaPrincipal.severity === 'warning' ? 'bg-yellow-500 shadow-yellow-500/20'
-            : 'bg-[#00C896] shadow-green-500/20'}`}
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0
+            ${alertaPrincipal.severity === 'error' ? 'bg-[#FF6B6B]'
+            : alertaPrincipal.severity === 'warning' ? 'bg-yellow-500'
+            : 'bg-[#00C896]'}`}
           >
             <span className="text-lg">{alertaPrincipal.emoji}</span>
           </div>
           <div className="flex-1 min-w-0">
             <p className={`text-xs font-bold leading-tight
               ${alertaPrincipal.severity === 'error' ? 'text-[#FF6B6B]'
-              : alertaPrincipal.severity === 'warning' ? 'text-yellow-600 dark:text-yellow-400'
-              : 'text-emerald-700 dark:text-emerald-400'}`}
+              : alertaPrincipal.severity === 'warning' ? 'text-yellow-600'
+              : 'text-emerald-700'}`}
             >
-              {alertaPrincipal.calle && (
-                <span className="font-black">{alertaPrincipal.calle}: </span>
-              )}
+              {alertaPrincipal.calle && <span className="font-black">{alertaPrincipal.calle}: </span>}
               {alertaPrincipal.texto}
             </p>
-            {alertaPrincipal.delay && (
-              <p className="text-[9px] text-gray-400 font-bold mt-0.5">
-                Retraso estimado: {alertaPrincipal.delay} min
-              </p>
-            )}
           </div>
-          {alertasCargando && (
-            <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin shrink-0" />
-          )}
+          {alertasCargando && <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin shrink-0" />}
         </div>
       )}
-
-      {/* Banner Institucional BipBici (Monetización) */}
-      <div
-        onClick={() => trackEvent('Ad', 'click', 'bipbici_promo')}
-        className="relative p-6 rounded-3xl overflow-hidden cursor-pointer bg-gradient-to-r from-[#1A1A2E] to-[#16213E] text-white shadow-xl border border-[#00C896]/20"
-      >
-         <div className="relative z-10 flex items-center justify-between">
-            <div className="max-w-[70%]">
-               <span className="bg-[#00C896]/20 border border-[#00C896]/30 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest text-[#00C896]">Partner Movilidad</span>
-               <h3 className="text-lg font-black mt-1 leading-tight">BipBici + Ruta Verde</h3>
-               <p className="text-[10px] font-bold opacity-70 mt-1">Estaciones de bicicleta integradas en tu ruta sostenible.</p>
-            </div>
-            <div className="w-14 h-14 bg-[#00C896]/10 rounded-2xl flex items-center justify-center border border-[#00C896]/20">
-               <Bike size={28} className="text-[#00C896]" />
-            </div>
-         </div>
-         <div className="absolute top-0 right-0 w-32 h-32 bg-[#00C896]/5 rounded-full -translate-y-12 translate-x-12 blur-2xl"></div>
-      </div>
-
-      <div className="space-y-4">
-        <h2 className="text-xl font-black text-[#0D1B2A] dark:text-white tracking-tight">Rutas sugeridas para ti</h2>
-        <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 -mx-2 px-2">
-          {suggestedRoutes.map((r) => (
-            <div key={r.id} onClick={() => onNavigate('rutas')} className="min-w-[160px] bg-white dark:bg-slate-900 p-4 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-xl shadow-green-900/5 cursor-pointer hover:border-[#00C896] transition-all">
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-8 h-8 bg-gray-50 dark:bg-slate-800 rounded-lg flex items-center justify-center text-[#1A1A2E] dark:text-white">{r.mode}</div>
-                <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${r.color}`}>{r.co2}</span>
-              </div>
-              <p className="font-black text-xs text-[#0D1B2A] dark:text-white truncate">{r.name}</p>
-              <p className="text-[10px] text-gray-400 font-bold">{r.time}</p>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };
@@ -1294,196 +1189,115 @@ const RoutePlannerComponent = ({ onStart, destination, destName, darkMode }) => 
   );
 };
 
-const LiveMapComponent = ({ darkMode, onNavigateToRutas }) => {
-  const [layers, setLayers] = useState({ metro: true, bici: true, scooter: true });
-  const [showAlerts, setShowAlerts] = useState(false);
-  const [modoFiltro, setModoFiltro] = useState(null);
-  const [destSeleccionado, setDestSeleccionado] = useState(null);
-  const { alertas, cargando, ultimaActualizacion, refetch } = useTrafficAlerts();
-  const user = useMemo(() => storage.get('rv_user', { city: 'Santiago' }), []);
+const LiveMapScreen = ({ darkMode, onStartNavigation, userPos, onSetDest, onSetRoutePoints }) => {
+  const [mapQuery, setMapQuery] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [destination, setDestination] = useState(null);
+  const [routes, setRoutes] = useState([]);
+  const [selectedRoute, setSelectedRoute] = useState(null);
 
-  const MODOS_RAPIDOS = [
-    { id: 'bici', emoji: '🚴', label: 'Bici' },
-    { id: 'scooter', emoji: '🛴', label: 'Scooter' },
-    { id: 'metro', emoji: '🚇', label: 'Metro' },
-    { id: 'micro', emoji: '🚌', label: 'Micro' },
-  ];
+  const searchPlaces = async (query) => {
+    if (query.length < 3) { setSuggestions([]); return; }
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ' Santiago Chile')}&format=json&limit=5&countrycodes=cl`);
+    const data = await res.json();
+    setSuggestions(data.map(p => ({
+      nombre: p.display_name.split(',').slice(0,2).join(',').trim(),
+      lat: parseFloat(p.lat), lon: parseFloat(p.lon)
+    })));
+  };
 
-  // Contar alertas importantes para el badge
-  const alertasImportantes = alertas.filter(a => a.severity === 'error').length;
+  const selectDestination = async (s) => {
+    setDestination(s);
+    setSuggestions([]);
+    setMapQuery(s.nombre);
+    onSetDest([s.lat, s.lon], s.nombre);
 
-  const horaActualizacion = ultimaActualizacion
-    ? ultimaActualizacion.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
-    : null;
+    // OSRM
+    try {
+      const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${userPos[1]},${userPos[0]};${s.lon},${s.lat}?overview=full&geometries=geojson`);
+      const data = await res.json();
+      if (data.routes && data.routes[0]) {
+        const mins = Math.round(data.routes[0].duration / 60);
+        const pts = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+        onSetRoutePoints(pts);
+
+        const routesGen = [
+          { id: 'verde', nombre: 'Ruta Verde', badge: 'RECOMENDADA', badgeColor: '#00C896', iconos: ['🚇', '🚶'], tiempo: Math.round(mins * 1.1), precio: '$800', co2: '0.2 kg', co2Color: '#00C896', descripcion: 'Metro + caminata · Mejor opción' },
+          { id: 'rapida', nombre: 'Ruta Rápida', badge: 'MÁS RÁPIDA', badgeColor: '#FFD93D', iconos: ['🚌', '🚇'], tiempo: Math.round(mins * 0.9), precio: '$1.200', co2: '0.8 kg', co2Color: '#FFD93D', descripcion: 'Bus + Metro · Más directo' },
+          { id: 'activa', nombre: 'Ruta Activa', badge: 'CERO EMISIONES', badgeColor: '#00D4FF', iconos: ['🚲'], tiempo: Math.round(mins * 1.4), precio: '$0', co2: '0 kg', co2Color: '#00D4FF', descripcion: 'Solo bicicleta · Sin emisiones' }
+        ];
+        setRoutes(routesGen);
+        setSelectedRoute(routesGen[0]);
+      }
+    } catch (e) { console.error(e); }
+  };
 
   return (
-    <div className="h-full -mx-5 -mt-8 flex flex-col relative overflow-hidden">
-      <div className="flex-grow relative h-full leaflet-container-wrapper">
-        <CityMap
-          showMetro={layers.metro || modoFiltro === 'metro'}
-          showBici={layers.bici || modoFiltro === 'bici'}
-          showScooter={layers.scooter || modoFiltro === 'scooter'}
-          city={user.city}
-          darkMode={darkMode}
-          alertasCoords={alertas.filter(a => a.lat && a.lon)}
-          modoTransporte={modoFiltro}
-          destination={destSeleccionado}
-          onSearchSelect={(coords, nombre) => {
-            setDestSeleccionado(coords);
-          }}
-        />
-        {destSeleccionado && (
-          <div className="absolute bottom-28 left-4 right-4 z-[1000]">
-            <button
-              onClick={() => { if (onNavigateToRutas) onNavigateToRutas(destSeleccionado); }}
-              className="w-full py-4 bg-[#00C896] text-white font-black text-sm rounded-2xl shadow-2xl flex items-center justify-center gap-2 active:scale-95 transition-all"
-            >
-              <Navigation size={18} /> Ver rutas hacia este destino
-            </button>
+    <div className="h-full relative pointer-events-auto">
+      {/* SEARCH INPUT — FIX #3 */}
+      <div className="absolute top-4 left-4 right-4 z-[600]">
+        <div style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: '12px' }} className="flex items-center gap-3 p-3 shadow-2xl">
+          <Search size={18} className="text-[#00C896]" />
+          <input
+            type="text" placeholder="¿A dónde vas?" value={mapQuery}
+            onChange={(e) => { setMapQuery(e.target.value); searchPlaces(e.target.value); }}
+            className="bg-transparent w-full outline-none text-white text-sm font-bold"
+          />
+          {mapQuery && <X size={18} className="text-[#8B949E]" onClick={() => { setMapQuery(''); setDestination(null); setRoutes([]); }} />}
+        </div>
+        {suggestions.length > 0 && (
+          <div style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: '0 0 12px 12px' }} className="mt-0.5 overflow-hidden shadow-2xl">
+            {suggestions.map((s, i) => (
+              <div key={i} onClick={() => selectDestination(s)} className="p-4 border-b border-[#30363D] text-[#F0F6FC] cursor-pointer text-sm font-bold flex items-center gap-3 active:bg-[#21262D]">
+                <MapPin size={14} className="text-[#00C896]" /> {s.nombre}
+              </div>
+            ))}
           </div>
         )}
-
-        {/* FILTROS DE MODO — debajo del buscador */}
-        <div className="absolute top-20 left-4 right-4 flex gap-2 z-[900] overflow-x-auto no-scrollbar">
-          {MODOS_RAPIDOS.map(m => (
-            <button
-              key={m.id}
-              onClick={() => setModoFiltro(prev => prev === m.id ? null : m.id)}
-              className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all border whitespace-nowrap flex items-center gap-1
-                ${modoFiltro === m.id
-                  ? 'bg-[#00C896] text-white border-[#00C896]'
-                  : 'bg-white/90 text-[#1A1A2E] border-gray-100 backdrop-blur-sm dark:bg-slate-800/90 dark:text-white dark:border-slate-700'
-                }`}
-            >
-              {m.emoji} {m.label}
-            </button>
-          ))}
-        </div>
-
-        {/* TOGGLE CAPAS */}
-        <div className="absolute top-6 left-4 right-4 flex gap-2 z-[1000] overflow-x-auto no-scrollbar">
-          {Object.entries(layers).map(([key, val]) => (
-            <button
-              key={key}
-              onClick={() => setLayers({ ...layers, [key]: !val })}
-              className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all border whitespace-nowrap
-                ${val
-                  ? 'bg-[#1A1A2E] text-white border-[#1A1A2E]'
-                  : 'bg-white text-[#1A1A2E] border-gray-100 dark:bg-slate-800 dark:text-white dark:border-slate-700'
-                }`}
-            >
-              {key}
-            </button>
-          ))}
-
-          {/* BOTÓN ALERTAS con badge de incidentes importantes */}
-          <button
-            onClick={() => setShowAlerts(!showAlerts)}
-            className="relative px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all border bg-red-500 text-white shrink-0"
-          >
-            {cargando ? '⏳' : '⚠️'} Alertas
-            {alertasImportantes > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white text-red-500 rounded-full text-[9px] font-black flex items-center justify-center border-2 border-red-500">
-                {alertasImportantes}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* BOTÓN CENTRAR */}
-        <button className="absolute bottom-24 right-4 z-[1000] w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-2xl border border-gray-100 dark:border-slate-700 text-[#00C896]">
-          <Locate size={22} />
-        </button>
-
-        {/* PANEL DE ALERTAS — slide desde la derecha */}
-        <div className={`absolute top-0 right-0 h-full w-[85%] max-w-xs bg-white dark:bg-slate-900 z-[2000] shadow-2xl transition-transform duration-400 ease-out border-l border-gray-100 dark:border-slate-800 flex flex-col
-          ${showAlerts ? 'translate-x-0' : 'translate-x-full'}`}
-        >
-          {/* Header del panel */}
-          <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-slate-800 shrink-0">
-            <div>
-              <h3 className="font-black text-lg text-[#0D1B2A] dark:text-white">Alertas en vivo</h3>
-              {horaActualizacion && (
-                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
-                  Actualizado {horaActualizacion} · TomTom
-                </p>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={refetch}
-                className="w-8 h-8 bg-gray-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-gray-500 hover:text-[#00C896] transition-colors"
-                title="Actualizar"
-              >
-                <TrendingUp size={14} />
-              </button>
-              <button
-                onClick={() => setShowAlerts(false)}
-                className="w-8 h-8 bg-gray-100 dark:bg-slate-800 rounded-xl flex items-center justify-center"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          </div>
-
-          {/* Lista de alertas */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {cargando ? (
-              // Skeleton loader
-              Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800 animate-pulse">
-                  <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded w-3/4 mb-2" />
-                  <div className="h-2 bg-gray-200 dark:bg-slate-700 rounded w-1/2" />
-                </div>
-              ))
-            ) : (
-              alertas.map((a) => (
-                <div
-                  key={a.id}
-                  className={`p-4 rounded-2xl border transition-all
-                    ${a.severity === 'error'
-                      ? 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800/30'
-                      : a.severity === 'warning'
-                      ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-100 dark:border-yellow-800/30'
-                      : 'bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-800/30'
-                    }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="text-xl shrink-0 mt-0.5">{a.emoji}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-[#0D1B2A] dark:text-white leading-snug truncate">
-                        {a.calle && <span className="text-[#00C896]">{a.calle}: </span>}
-                        {a.texto}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1.5">
-                        <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full
-                          ${a.status === 'Importante' ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
-                          : a.status === 'OK' ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400'
-                          : 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/40 dark:text-yellow-400'}`}
-                        >
-                          {a.status}
-                        </span>
-                        {a.delay && (
-                          <span className="text-[8px] font-bold text-gray-500">
-                            +{a.delay} min de retraso
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Footer con créditos */}
-          <div className="p-4 border-t border-gray-100 dark:border-slate-800 shrink-0">
-            <p className="text-[8px] font-bold text-gray-400 text-center uppercase tracking-widest">
-              Datos: TomTom Traffic™ · Se actualiza cada 2 min
-            </p>
-          </div>
-        </div>
       </div>
+
+      {/* BOTTOM SHEET — FIX #3 & #4 */}
+      {destination && routes.length > 0 && (
+        <div style={{ background: '#161B22', borderTop: '1px solid #30363D' }} className="fixed bottom-[60px] left-0 right-0 z-[800] rounded-t-[20px] p-5 max-h-[70vh] overflow-y-auto no-scrollbar animate-slide-up">
+          <div className="w-10 h-1 bg-[#30363D] rounded-full mx-auto mb-4" />
+          <h3 className="text-[#F0F6FC] text-base font-bold">Rutas disponibles</h3>
+          <p className="text-[#8B949E] text-xs mb-4">Hacia {destination.nombre}</p>
+
+          {/* NEARBY TRANSPORT — FIX #4 */}
+          <div className="mb-6">
+            <p className="text-[#8B949E] text-[10px] font-black uppercase tracking-widest mb-3">CERCA DE TI AHORA</p>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+              {[
+                { tipo: '🚇', nombre: 'Metro', info: 'Baquedano · 3 min', color: '#EF4444' },
+                { tipo: '🚌', nombre: 'Micro', info: 'Red 301 · 5 min', color: '#FFD93D' },
+                { tipo: '🚲', nombre: 'BipBici', info: '4 bicis · 200m', color: '#00D4FF' },
+                { tipo: '🛴', nombre: 'Scooter', info: 'Lime · 80m', color: '#FF8C42' }
+              ].map(t => (
+                <div key={t.nombre} style={{ background: '#21262D', border: `1px solid ${t.color}40` }} className="p-3 rounded-xl min-w-[90px] text-center shrink-0">
+                  <div className="text-xl mb-1">{t.tipo}</div>
+                  <div style={{ color: t.color }} className="text-[11px] font-bold">{t.nombre}</div>
+                  <div className="text-[9px] text-[#8B949E]">{t.info}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3 mb-4">
+            {routes.map(r => (
+              <RouteCard key={r.id} route={r} selected={selectedRoute?.id === r.id} onSelect={() => setSelectedRoute(r)} />
+            ))}
+          </div>
+
+          {selectedRoute && (
+            <button
+              onClick={() => onStartNavigation({ ...selectedRoute, destinoCoords: [destination.lat, destination.lon] })}
+              className="w-full h-14 rounded-2xl bg-gradient-to-r from-[#00C896] to-[#00A878] text-white font-black text-lg shadow-xl shadow-green-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            >
+              ▶ Iniciar {selectedRoute.nombre}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -2021,7 +1835,7 @@ export default function RutaVerde() {
   const [activeTab, setActiveTab] = useState('inicio');
   const [stats, setStats] = useState({ points: 0, co2Total: 0, kmTotal: 0, rutasCount: 0 });
   const [toast, setToast] = useState(null);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
   const [logoClicks, setLogoClicks] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
   const [redeeming, setRedeeming] = useState(null);
@@ -2029,6 +1843,7 @@ export default function RutaVerde() {
   const [destName, setDestName] = useState('');
   const [navegacionActiva, setNavegacionActiva] = useState(false);
   const [rutaActiva, setRutaActiva] = useState(null);
+  const [currentRoutePoints, setCurrentRoutePoints] = useState([]);
   const { pos: userPos } = useGeolocalizacion();
 
   // Alertas de tráfico en tiempo real
@@ -2064,14 +1879,16 @@ export default function RutaVerde() {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
-  const handleStartRoute = (rutaSeleccionada) => {
-    if (!rutaSeleccionada) return;
-    const co2Evitado = parseFloat(metricas.calcularCO2Evitado(rutaSeleccionada.distanciaKm, rutaSeleccionada.medio).toFixed(3));
-    const puntosNuevos = metricas.calcularPuntos(co2Evitado, rutaSeleccionada.distanciaKm);
-    setRutaActiva({ ...rutaSeleccionada, co2Evitado, puntosNuevos, destinoCoords: destCoords });
+  const handleStartNavigation = (route) => {
+    setRutaActiva({
+      ...route,
+      time: route.tiempo,
+      pts: 150,
+      medio: route.id,
+      instrucciones: ["🚶 Camina al paradero", "🚇 Toma el metro", "🏁 ¡Llegaste!"],
+      distanciaKm: 4.2
+    });
     setNavegacionActiva(true);
-    setActiveTab('mapa');
-    showToast(`🗺️ Navegando: ${rutaSeleccionada.title}`);
   };
 
   const handleFinalizarViaje = () => {
@@ -2203,7 +2020,11 @@ export default function RutaVerde() {
           darkMode={darkMode}
         />
       )}
-      <div className={`min-h-screen bg-[#0D1117] text-[#1A1A2E] dark:text-white font-['Inter'] selection:bg-[#00C896] selection:text-white transition-colors duration-500`}>
+      <div className={`min-h-screen bg-[#0D1117] text-[#F0F6FC] font-['Inter'] selection:bg-[#00C896] selection:text-white transition-colors duration-500 overflow-hidden`}>
+
+        {/* Fondo base siempre presente — FIX #1 */}
+        <div style={{ position: 'fixed', inset: 0, background: '#0D1117', zIndex: 0 }} />
+
         {!isOnline && (
           <div className="fixed top-0 left-0 right-0 z-[10000] bg-red-500 text-white text-[10px] font-black uppercase tracking-[0.2em] py-2 text-center animate-slide-down">
             Estás en modo offline. Algunas funciones pueden no estar disponibles.
@@ -2211,7 +2032,7 @@ export default function RutaVerde() {
         )}
         {showConfetti && <ConfettiEffect onComplete={() => setShowConfetti(false)} />}
         {toast && (
-          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[5000] w-[90%] max-w-sm bg-[#1A1A2E] dark:bg-slate-800 text-white px-8 py-5 rounded-[32px] shadow-2xl flex items-center gap-4 animate-slide-up border-b-8 border-[#00C896]">
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[5000] w-[90%] max-w-sm bg-[#1A1A2E] text-white px-8 py-5 rounded-[32px] shadow-2xl flex items-center gap-4 animate-slide-up border-b-8 border-[#00C896]">
             <CheckCircle2 size={24} className="text-[#00C896] shrink-0" />
             <p className="font-black text-sm">{toast}</p>
           </div>
@@ -2219,72 +2040,80 @@ export default function RutaVerde() {
 
         {redeeming && (
           <div className="fixed inset-0 z-[4000] bg-black/60 backdrop-blur-sm flex items-end justify-center animate-fade-in">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-t-[48px] p-8 pb-32 space-y-6 animate-slide-up shadow-[0_-20px_50px_rgba(0,0,0,0.3)] border-t border-white/10">
-              <div className="w-16 h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full mx-auto mb-2"></div>
+            <div className="bg-[#0D1117] w-full max-w-lg rounded-t-[48px] p-8 pb-32 space-y-6 animate-slide-up shadow-[0_-20px_50px_rgba(0,0,0,0.3)] border-t border-[#30363D]">
+              <div className="w-16 h-1.5 bg-[#30363D] rounded-full mx-auto mb-2"></div>
               <div className="text-center space-y-2">
-                  <h3 className="text-2xl font-black text-[#0D1B2A] dark:text-white">¿Canjear beneficio?</h3>
-                  <p className="text-gray-500 dark:text-slate-400 font-bold">Se descontarán {redeeming.cost} puntos de tu cuenta.</p>
+                  <h3 className="text-2xl font-black text-white">¿Canjear beneficio?</h3>
+                  <p className="text-gray-400 font-bold">Se descontarán {redeeming.cost} puntos de tu cuenta.</p>
               </div>
-              <div className="bg-gray-50 dark:bg-slate-800 rounded-3xl p-10 flex flex-col items-center gap-4 border border-gray-100 dark:border-slate-700">
-                  <div className="w-40 h-40 bg-white dark:bg-slate-900 p-4 rounded-3xl shadow-inner flex items-center justify-center">
-                    <QrCode size={120} className="text-[#1A1A2E] dark:text-white" />
+              <div className="bg-[#161B22] rounded-3xl p-10 flex flex-col items-center gap-4 border border-[#30363D]">
+                  <div className="w-40 h-40 bg-[#21262D] p-4 rounded-3xl shadow-inner flex items-center justify-center">
+                    <QrCode size={120} className="text-white" />
                   </div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Escanea en caja después de confirmar</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Escanea en caja después de confirmar</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                  <Button variant="ghost" onClick={() => setRedeeming(null)} className="py-5">Cancelar</Button>
+                  <Button variant="ghost" onClick={() => setRedeeming(null)} className="py-5 text-gray-400">Cancelar</Button>
                   <Button onClick={confirmRedeem} className="py-5">Confirmar</Button>
               </div>
             </div>
           </div>
         )}
 
-        <div className="max-w-7xl mx-auto flex h-screen overflow-hidden">
-          {/* MOBILE MAP (Fixed background for mobile) */}
-          <div className="lg:hidden fixed top-[56px] bottom-[60px] left-0 right-0 z-0">
-             <CityMap city={user.city} darkMode={darkMode} alertasCoords={alertas.filter(a => a.lat && a.lon)} />
+        <div className="max-w-7xl mx-auto flex h-screen overflow-hidden relative">
+
+          {/* MAP CONTAINER CON VISIBILIDAD CONTROLADA — FIX #1 */}
+          <div style={{
+            position: 'fixed',
+            top: '56px', left: 0, right: 0, bottom: '60px',
+            zIndex: 1,
+            display: activeTab === 'mapa' ? 'block' : 'none'
+          }}>
+             <CityMap
+               city={user.city}
+               darkMode={true}
+               alertasCoords={alertas.filter(a => a.lat && a.lon)}
+               destination={destCoords}
+               routePreview={currentRoutePoints}
+             />
           </div>
 
-          <div className="w-full lg:w-[480px] bg-white/0 lg:bg-white dark:bg-slate-900/0 lg:dark:bg-slate-900 h-screen overflow-y-auto no-scrollbar shadow-2xl relative lg:border-x border-gray-100 dark:border-slate-800 flex flex-col z-50 pointer-events-none">
+          <div className="w-full lg:w-[480px] h-screen shadow-2xl relative lg:border-x border-[#30363D] flex flex-col z-[2] pointer-events-none">
             {/* Header: position fixed, height 56px */}
-            <header className="fixed top-0 left-0 right-0 h-[56px] bg-[#0D1117] flex items-center px-6 z-[1000] border-b border-white/5 pointer-events-auto">
+            <header className="fixed top-0 left-0 right-0 h-[56px] bg-[#0D1117] flex items-center justify-between px-6 z-[1000] border-b border-[#30363D] pointer-events-auto">
               <div className="flex items-center gap-2 cursor-pointer select-none active:scale-95 transition-transform" onClick={handleLogoClick}>
                 <div className="w-8 h-8 bg-[#00C896] rounded-lg flex items-center justify-center text-white"><Leaf size={16} fill="currentColor" /></div>
                 <span className="font-black text-lg tracking-tighter text-white uppercase">RUTA <span className="text-[#00C896]">VERDE</span></span>
               </div>
+              <button className="relative w-10 h-10 bg-[#161B22] rounded-xl flex items-center justify-center border border-[#30363D] transition-transform active:scale-95">
+                <Bell size={20} className="text-white" />
+                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#FF6B6B] rounded-full border-2 border-[#0D1117]"></span>
+              </button>
             </header>
 
-            <main className="flex-grow p-6 pt-[72px] pb-[80px] pointer-events-none">
-              <div className="pointer-events-auto">
+            <main className="flex-grow overflow-y-auto no-scrollbar pt-[56px] pb-[60px] pointer-events-none">
+              <div className="pointer-events-auto h-full">
 
               <Suspense fallback={<div className="flex items-center justify-center h-full"><Skeleton className="w-full h-64" /></div>}>
-                {activeTab === 'inicio' && (
-                  <div className="bg-[#0D1117]/80 backdrop-blur-md rounded-[32px] p-1 border border-white/10 shadow-2xl">
-                    <HomeScreen
-                    user={user}
-                    onNavigate={handleNavigate}
-                    stats={stats}
-                    darkMode={darkMode}
-                    alertas={alertas}
-                    alertasCargando={alertasCargando}
-                    />
+                {activeTab === 'inicio' && <HomeComponent user={user} onNavigate={handleNavigate} stats={stats} alertas={alertas} />}
+                {activeTab === 'rutas' && (
+                  <div className="p-6 text-center animate-fade-in">
+                    <div className="w-20 h-20 bg-[#161B22] border border-[#30363D] rounded-3xl flex items-center justify-center mx-auto mb-6 text-[#00C896]"><Milestone size={40} /></div>
+                    <h2 className="text-2xl font-black text-white mb-2">Tus rutas guardadas</h2>
+                    <p className="text-[#8B949E] font-bold">Aquí aparecerán tus destinos frecuentes.</p>
                   </div>
                 )}
-                {activeTab === 'rutas' && (
-                  <RoutePlanner
-                    onStart={handleStartRoute}
-                    destination={destCoords}
-                    destName={destName}
+                {activeTab === 'mapa' && (
+                  <LiveMapScreen
                     darkMode={darkMode}
+                    onStartNavigation={handleStartNavigation}
+                    userPos={userPos}
+                    onSetDest={(coords, name) => { setDestCoords(coords); setDestName(name); }}
+                    onSetRoutePoints={setCurrentRoutePoints}
                   />
                 )}
-                {activeTab === 'mapa' && <LiveMapScreen darkMode={darkMode} onNavigateToRutas={(coords, name) => {
-                  setDestCoords(coords);
-                  setDestName(name || 'Destino seleccionado');
-                  setActiveTab('rutas');
-                }} />}
-                {activeTab === 'puntos' && <div className="bg-[#0D1117] min-h-screen"><GamificationScreen points={stats.points} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} co2Total={stats.co2Total} /></div>}
-                {activeTab === 'perfil' && <div className="bg-[#0D1117] min-h-screen"><ProfileScreen user={user} stats={stats} onLogout={handleLogout} darkMode={darkMode} setDarkMode={setDarkMode} /></div>}
+                {activeTab === 'puntos' && <GamificationScreen points={stats.points} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} co2Total={stats.co2Total} />}
+                {activeTab === 'perfil' && <ProfileScreen user={user} stats={stats} onLogout={handleLogout} darkMode={darkMode} setDarkMode={setDarkMode} />}
               </Suspense>
               </div>
             </main>
