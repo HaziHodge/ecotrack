@@ -1692,122 +1692,116 @@ const ProfileComponent = ({ user, stats, onLogout, darkMode, setDarkMode }) => {
 };
 
 const NavegacionActivaScreen = ({
-  nav, ruta, onCancelar, onSaltar, userLocation
+  nav, ruta, userLocation, onCancelar
 }) => {
-  const [stepIndex, setStepIndex] = useState(0)
-  const [elapsed, setElapsed] = useState(0)
+  const [stepIdx, setStepIdx] = useState(0)
+  const [secs, setSecs] = useState(0)
   const [co2, setCo2] = useState(0)
-  const [puntos, setPuntos] = useState(0)
+  const [pts, setPts] = useState(0)
 
-  // Ticker cada segundo
   useEffect(() => {
-    const interval = setInterval(() => {
-      setElapsed(s => s + 1)
-      // CO₂ sube según el medio de la ruta
-      const co2Rate = ruta.id === 'verde' ? 0.003
-        : ruta.id === 'rapida' ? 0.013 : 0
-      setCo2(c => parseFloat((c + co2Rate).toFixed(3)))
-      setPuntos(p => p + (ruta.id === 'activa' ? 2 : 1))
+    const t = setInterval(() => {
+      setSecs(s => s + 1)
+      setCo2(c => parseFloat(
+        (c + (ruta.id === 'activa' ? 0 : 0.003))
+        .toFixed(3)
+      ))
+      setPts(p => p + 1)
     }, 1000)
-    return () => clearInterval(interval)
+    return () => clearInterval(t)
   }, [ruta])
 
-  const minutosRestantes = Math.max(
-    0, ruta.tiempo - Math.floor(elapsed / 60)
-  )
-
   const PASOS = [
-    { instruccion: 'Sal hacia Av. Providencia', dist: '150m', icon: '↑' },
-    { instruccion: 'Gira a la derecha en Tobalaba', dist: '400m', icon: '→' },
-    { instruccion: 'Entra al Metro Tobalaba', dist: '80m', icon: '🚇' },
-    { instruccion: 'Toma la Línea 1 dirección San Pablo', dist: '3 min', icon: '🚇' },
-    { instruccion: 'Baja en Metro Baquedano', dist: '200m', icon: '↓' },
-    { instruccion: 'Camina por Av. Italia', dist: '300m', icon: '↑' },
-    { instruccion: 'Has llegado a tu destino', dist: '0m', icon: '📍' }
+    { i:'↑', d:'150m', t:'Sal hacia Av. Providencia' },
+    { i:'→', d:'300m', t:'Gira derecha en Tobalaba' },
+    { i:'🚇', d:'80m', t:'Entra al Metro Tobalaba' },
+    { i:'🚇', d:'3 min', t:'L1 dirección San Pablo' },
+    { i:'↓', d:'200m', t:'Baja en Baquedano' },
+    { i:'↑', d:'300m', t:'Camina por Av. Italia' },
+    { i:'📍', d:'0m', t:'Has llegado 🎉' }
   ]
 
-  const pasoActual = PASOS[Math.min(stepIndex, PASOS.length - 1)]
-  const pasoSiguiente = PASOS[Math.min(stepIndex + 1, PASOS.length - 1)]
+  const paso = PASOS[Math.min(stepIdx, PASOS.length-1)]
+  const next = PASOS[Math.min(stepIdx+1, PASOS.length-1)]
+  const minRest = Math.max(0,
+    ruta.tiempo - Math.floor(secs/60)
+  )
+  const progreso = Math.min(100,
+    (secs / (ruta.tiempo * 60)) * 100
+  )
 
   return (
     <div style={{
       position: 'fixed', inset: 0,
-      background: '#0D1117', zIndex: 2000,
+      background: '#0D1117',
+      zIndex: 2000,
       display: 'flex', flexDirection: 'column'
     }}>
 
-      {/* ── BANNER SUPERIOR — INSTRUCCIÓN ACTUAL ── */}
+      {/* BANNER SUPERIOR */}
       <div style={{
         background: '#161B22',
         borderBottom: '1px solid #30363D',
         padding: '16px 20px',
         flexShrink: 0
       }}>
-        {/* Fila 1: distancia + instrucción */}
         <div style={{
-          display: 'flex', alignItems: 'center',
-          gap: '14px', marginBottom: '10px'
+          display: 'flex', gap: '14px',
+          alignItems: 'center', marginBottom: '12px'
         }}>
           <div style={{
-            background: '#00C896',
             width: '56px', height: '56px',
+            background: '#00C896',
             borderRadius: '16px',
             display: 'flex', alignItems: 'center',
             justifyContent: 'center',
             fontSize: '28px', flexShrink: 0
           }}>
-            {pasoActual.icon}
+            {paso.i}
           </div>
           <div style={{ flex: 1 }}>
             <div style={{
               color: '#8B949E', fontSize: '12px',
               textTransform: 'uppercase',
-              letterSpacing: '0.5px', marginBottom: '2px'
+              marginBottom: '4px'
             }}>
-              En {pasoActual.dist}
+              En {paso.d}
             </div>
             <div style={{
               color: '#F0F6FC', fontSize: '18px',
               fontWeight: '700', lineHeight: 1.2
             }}>
-              {pasoActual.instruccion}
+              {paso.t}
             </div>
           </div>
         </div>
 
-        {/* Fila 2: siguiente paso + botón saltar */}
         <div style={{
-          display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between',
           background: '#21262D',
-          borderRadius: '10px', padding: '10px 14px'
+          borderRadius: '10px',
+          padding: '10px 14px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
         }}>
           <div style={{
             color: '#8B949E', fontSize: '13px',
-            flex: 1
+            flex: 1, overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
           }}>
-            <span style={{ marginRight: '6px' }}>
-              Luego:
-            </span>
-            <span style={{ color: '#F0F6FC' }}>
-              {pasoSiguiente.icon} {
-                pasoSiguiente.instruccion
-              }
-            </span>
+            Luego: {next.i} {next.t}
           </div>
           <button
-            onClick={() => {
-              if (stepIndex < PASOS.length - 1) {
-                setStepIndex(i => i + 1)
-              }
-            }}
+            onClick={() => setStepIdx(i =>
+              Math.min(i+1, PASOS.length-1)
+            )}
             style={{
-              background: '#30363D',
-              border: 'none', color: '#F0F6FC',
-              padding: '6px 14px', borderRadius: '8px',
-              fontSize: '13px', fontWeight: '600',
-              cursor: 'pointer', flexShrink: 0,
-              marginLeft: '10px'
+              background: '#30363D', border: 'none',
+              color: '#F0F6FC', padding: '6px 14px',
+              borderRadius: '8px', fontSize: '13px',
+              fontWeight: '600', cursor: 'pointer',
+              marginLeft: '10px', flexShrink: 0
             }}
           >
             Saltar ›
@@ -1815,137 +1809,74 @@ const NavegacionActivaScreen = ({
         </div>
       </div>
 
-      {/* ── MAPA (ocupa todo el espacio restante) ── */}
-      <div style={{ flex: 1, position: 'relative' }}>
+      {/* MAPA NAVEGACIÓN */}
+      <div style={{ flex: 1, background: '#0D1117',
+        display: 'flex', alignItems: 'center',
+        justifyContent: 'center'
+      }}>
         <div style={{
-          position: 'absolute', inset: 0
+          color: '#8B949E', textAlign: 'center'
         }}>
-          <MapContainer
-            center={[-33.4489, -70.6693]}
-            zoom={16}
-            style={{ height: '100%', width: '100%' }}
-            zoomControl={false}
-          >
-            <TileLayer
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-              attribution=""
-            />
-            {/* Marcador usuario pulsante */}
-            {userLocation && (
-              <Marker
-                position={[userLocation.lat, userLocation.lng]}
-                icon={L.divIcon({
-                  html: `<div style="
-                    width:20px; height:20px;
-                    background:#00C896;
-                    border:3px solid white;
-                    border-radius:50%;
-                    box-shadow:0 0 0 6px rgba(0,200,150,0.3);
-                    animation: pulse 2s infinite;
-                  "></div>`,
-                  iconSize: [20, 20],
-                  iconAnchor: [10, 10],
-                  className: ''
-                })}
-              />
-            )}
-          </MapContainer>
-        </div>
-
-        {/* Badge de ruta activa sobre el mapa */}
-        <div style={{
-          position: 'absolute', top: '12px',
-          left: '50%', transform: 'translateX(-50%)',
-          background: '#161B22',
-          border: `1px solid ${ruta.badgeColor || '#00C896'}`,
-          borderRadius: '20px', padding: '6px 16px',
-          zIndex: 500, fontSize: '13px',
-          fontWeight: '600',
-          color: ruta.badgeColor || '#00C896'
-        }}>
-          {ruta.nombre}
+          <div style={{ fontSize: '48px' }}>🗺️</div>
+          <div style={{ fontSize: '14px', marginTop: '8px' }}>
+            Navegando...
+          </div>
         </div>
       </div>
 
-      {/* ── PANEL INFERIOR — MÉTRICAS + CANCELAR ── */}
+      {/* PANEL INFERIOR */}
       <div style={{
         background: '#161B22',
         borderTop: '1px solid #30363D',
         padding: '16px 20px 32px',
         flexShrink: 0
       }}>
-        {/* Métricas en tiempo real */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: '8px', marginBottom: '16px'
+          gridTemplateColumns: 'repeat(4,1fr)',
+          gap: '8px', marginBottom: '14px'
         }}>
           {[
-            {
-              v: minutosRestantes + ' min',
-              l: 'RESTANTE',
-              c: '#F0F6FC'
-            },
-            {
-              v: (nav.distanciaTotal -
-                  nav.distanciaTotal *
-                  (elapsed / (ruta.tiempo * 60))
-                ).toFixed(1) + ' km',
-              l: 'DISTANCIA',
-              c: '#58A6FF'
-            },
-            {
-              v: co2.toFixed(2) + ' kg',
-              l: 'CO₂',
-              c: ruta.id === 'activa'
-                ? '#00C896' : '#FFD93D'
-            },
-            {
-              v: '+' + puntos,
-              l: 'PUNTOS',
-              c: '#00C896'
-            }
+            { v: minRest+'min', l:'RESTANTE',
+              c:'#F0F6FC' },
+            { v: nav.distanciaTotal.toFixed(1)+'km',
+              l:'DISTANCIA', c:'#58A6FF' },
+            { v: co2.toFixed(2)+'kg',
+              l:'CO₂', c:'#FFD93D' },
+            { v: '+'+pts, l:'PUNTOS', c:'#00C896' }
           ].map(m => (
             <div key={m.l} style={{
               background: '#21262D',
+              border: '1px solid #30363D',
               borderRadius: '10px',
-              padding: '10px 6px',
-              textAlign: 'center',
-              border: '1px solid #30363D'
+              padding: '10px 4px',
+              textAlign: 'center'
             }}>
               <div style={{
                 fontWeight: '700', fontSize: '15px',
                 color: m.c
-              }}>
-                {m.v}
-              </div>
+              }}>{m.v}</div>
               <div style={{
                 color: '#8B949E', fontSize: '10px',
                 marginTop: '2px'
-              }}>
-                {m.l}
-              </div>
+              }}>{m.l}</div>
             </div>
           ))}
         </div>
 
-        {/* Barra de progreso del viaje */}
         <div style={{
           height: '4px', background: '#30363D',
-          borderRadius: '2px', marginBottom: '16px',
+          borderRadius: '2px', marginBottom: '14px',
           overflow: 'hidden'
         }}>
           <div style={{
             height: '100%', background: '#00C896',
-            borderRadius: '2px',
-            width: `${Math.min(100,
-              (elapsed / (ruta.tiempo * 60)) * 100
-            )}%`,
-            transition: 'width 1s linear'
+            width: progreso+'%',
+            transition: 'width 1s linear',
+            borderRadius: '2px'
           }} />
         </div>
 
-        {/* Botón cancelar */}
         <button
           onClick={onCancelar}
           style={{
@@ -2144,10 +2075,7 @@ export default function RutaVerde() {
     setActiveNavigation({
       ruta,
       startTime: Date.now(),
-      distanciaTotal: parseFloat(routeDistance) || 5.0,
-      distanciaRecorrida: 0,
-      co2Acumulado: 0,
-      puntosAcumulados: 0
+      distanciaTotal: parseFloat(routeDistance) || 5.0
     })
     setShowRoutePanel(false)
   }
@@ -2492,104 +2420,274 @@ export default function RutaVerde() {
 
               {/* Bottom sheet de rutas — FIX #5 & #7 */}
               {showRoutePanel && (
-                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: '#161B22', borderRadius: '20px 20px 0 0', border: '1px solid #30363D', borderBottom: 'none', zIndex: 600, maxHeight: '72vh', overflowY: 'auto', padding: '16px 16px 24px' }} className="no-scrollbar">
-                  <div style={{ width: '40px', height: '4px', background: '#30363D', borderRadius: '2px', margin: '0 auto 16px' }} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-                    <div>
-                      <div style={{ color: '#F0F6FC', fontWeight: '700', fontSize: '16px' }}>Rutas disponibles</div>
-                      <div style={{ color: '#8B949E', fontSize: '13px', marginTop: '2px' }}>Hacia {destinoNombre.split(',')[0]} {routeDistance && ` · ${routeDistance} km`}</div>
-                    </div>
-                    <button onClick={() => { setShowRoutePanel(false); setSearchQuery(''); setRutas([]); }} style={{ background: '#21262D', border: '1px solid #30363D', color: '#8B949E', width: '32px', height: '32px', borderRadius: '8px', cursor: 'pointer', fontSize: '16px' }}>✕</button>
-                  </div>
-                  <div style={{ overflowX: 'auto', display: 'flex', gap: '8px', padding: '12px 0', borderBottom: '1px solid #30363D', marginBottom: '12px' }} className="no-scrollbar">
-                    {MEDIOS.map(medio => (
-                      <div
-                        key={medio.id}
-                        onClick={() => selectMedio(medio)}
-                        style={{
-                          background: medioSel === medio.id
-                            ? medio.c + '30' : '#21262D',
-                          border: `2px solid ${
-                            medioSel === medio.id ? medio.c : medio.c + '30'
-                          }`,
-                          borderRadius: '12px',
-                          padding: '10px 14px',
-                          flexShrink: 0,
-                          textAlign: 'center',
-                          minWidth: '76px',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s',
-                          transform: medioSel === medio.id
-                            ? 'scale(1.05)' : 'scale(1)'
-                        }}
-                      >
-                        <div style={{ fontSize: '18px' }}>{medio.i}</div>
-                        <div style={{ color: medio.c, fontSize: '11px', fontWeight: '600', marginTop: '2px' }}>{medio.n}</div>
-                        <div style={{ color: '#8B949E', fontSize: '10px' }}>{medio.d}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {medioSel && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  background: '#161B22',
+                  borderRadius: '20px 20px 0 0',
+                  border: '1px solid #30363D',
+                  borderBottom: 'none',
+                  zIndex: 600,
+                  maxHeight: '78vh',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden'
+                }}>
+                  {/* PARTE A — Header fijo */}
+                  <div style={{
+                    padding: '16px 16px 0',
+                    flexShrink: 0
+                  }}>
+                    {/* Handle bar */}
                     <div style={{
-                      color: '#8B949E', fontSize: '13px',
-                      marginBottom: '10px', textAlign: 'center'
+                      width: '40px', height: '4px',
+                      background: '#30363D', borderRadius: '2px',
+                      margin: '0 auto 16px'
+                    }} />
+
+                    {/* Título + X */}
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between',
+                      alignItems: 'flex-start', marginBottom: '6px'
                     }}>
-                      Mostrando rutas con{' '}
-                      <span style={{ color: '#F0F6FC', fontWeight: '600' }}>
-                        {MEDIOS.find(m => m.id === medioSel)?.n}
-                      </span>
-                    </div>
-                  )}
-                  {loadingRoutes ? (
-                    <div style={{ textAlign: 'center', padding: '24px', color: '#8B949E', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                      <div style={{ width: '20px', height: '20px', border: '2px solid #30363D', borderTop: '2px solid #00C896', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-                      Calculando rutas reales...
-                    </div>
-                  ) : (
-                    <>
-                      {rutas.map(ruta => (
-                        <div key={ruta.id} onClick={() => setSelectedRoute(ruta)} style={{ background: selectedRoute?.id === ruta.id ? '#00C89615' : '#21262D', border: `2px solid ${selectedRoute?.id === ruta.id ? ruta.badgeColor : '#30363D'}`, borderRadius: '14px', padding: '14px', marginBottom: '10px', cursor: 'pointer', transition: 'all 0.2s' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                            <div>
-                              <div style={{ fontWeight: '600', color: '#F0F6FC', fontSize: '15px' }}>{ruta.nombre}</div>
-                              <div style={{ color: '#8B949E', fontSize: '12px', marginTop: '2px' }}>{ruta.descripcion}</div>
-                            </div>
-                            <span style={{ background: ruta.badgeColor + '20', color: ruta.badgeColor, border: `1px solid ${ruta.badgeColor}40`, borderRadius: '20px', padding: '3px 10px', fontSize: '10px', fontWeight: '700', height: 'fit-content' }}>{ruta.badge}</span>
-                          </div>
-                          <div style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>{ruta.iconos.map((ic, i) => (<span key={i} style={{ fontSize: '18px' }}>{ic}</span>))}</div>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px' }}>
-                            {[{ v: ruta.tiempo + ' min', l: 'TIEMPO', c: '#F0F6FC' }, { v: ruta.precio, l: 'PRECIO', c: '#F0F6FC' }, { v: ruta.co2 + ' CO₂', l: 'EMISIONES', c: ruta.co2Color }].map(m => (
-                              <div key={m.l} style={{ textAlign: 'center' }}>
-                                <div style={{ fontWeight: '700', color: m.c, fontSize: '14px' }}>{m.v}</div>
-                                <div style={{ color: '#8B949E', fontSize: '10px' }}>{m.l}</div>
-                              </div>
-                            ))}
-                          </div>
-                          {selectedRoute?.id === ruta.id && (
-                            <div style={{ marginTop: '8px', textAlign: 'center', color: ruta.badgeColor, fontSize: '12px', fontWeight: '600' }}>✓ Seleccionada</div>
-                          )}
+                      <div>
+                        <div style={{
+                          color: '#F0F6FC', fontWeight: '700',
+                          fontSize: '16px'
+                        }}>
+                          Rutas disponibles
                         </div>
-                      ))}
-                      {selectedRoute && (
-                        <button
-                          onClick={() => startNavigation(selectedRoute)}
+                        <div style={{
+                          color: '#8B949E', fontSize: '13px',
+                          marginTop: '2px'
+                        }}>
+                          Hacia {destinoNombre.split(',')[0]}
+                          {routeDistance && ` · ${routeDistance} km`}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowRoutePanel(false)
+                          setSearchQuery('')
+                          setRutas([])
+                          setMedioSel(null)
+                          setSelectedRoute(null)
+                        }}
+                        style={{
+                          background: '#21262D',
+                          border: '1px solid #30363D',
+                          color: '#8B949E', width: '32px',
+                          height: '32px', borderRadius: '8px',
+                          cursor: 'pointer', fontSize: '16px'
+                        }}
+                      >✕</button>
+                    </div>
+
+                    {/* Chips de transporte */}
+                    <div style={{
+                      display: 'flex', gap: '8px',
+                      overflowX: 'auto', padding: '12px 0',
+                      borderBottom: '1px solid #30363D',
+                      marginBottom: '4px'
+                    }} className="no-scrollbar">
+                      {MEDIOS.map(medio => (
+                        <div
+                          key={medio.id}
+                          onClick={() => selectMedio(medio)}
                           style={{
-                            width: '100%',
-                            background: 'linear-gradient(135deg, #00C896, #00A878)',
-                            border: 'none', color: 'white',
-                            borderRadius: '14px', padding: '16px',
-                            fontSize: '16px', fontWeight: '700',
-                            cursor: 'pointer', marginTop: '4px',
-                            display: 'flex', alignItems: 'center',
-                            justifyContent: 'center', gap: '8px'
+                            background: medioSel === medio.id
+                              ? medio.c + '25' : '#21262D',
+                            border: `2px solid ${
+                              medioSel === medio.id
+                                ? medio.c : medio.c + '40'
+                            }`,
+                            borderRadius: '12px',
+                            padding: '10px 14px',
+                            flexShrink: 0,
+                            textAlign: 'center',
+                            minWidth: '76px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            transform: medioSel === medio.id
+                              ? 'scale(1.05)' : 'scale(1)'
                           }}
                         >
-                          ▶ INICIAR VIAJE
-                        </button>
-                      )}
-                    </>
-                  )}
+                          <div style={{ fontSize: '22px' }}>{medio.i}</div>
+                          <div style={{
+                            color: medioSel === medio.id
+                              ? medio.c : '#8B949E',
+                            fontSize: '12px', fontWeight: '600',
+                            marginTop: '4px'
+                          }}>{medio.n}</div>
+                          <div style={{
+                            color: '#8B949E', fontSize: '11px'
+                          }}>{medio.d}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {medioSel && (
+                      <div style={{
+                        color: '#8B949E', fontSize: '13px',
+                        textAlign: 'center', padding: '8px 0'
+                      }}>
+                        Mostrando rutas con{' '}
+                        <span style={{
+                          color: '#F0F6FC', fontWeight: '600'
+                        }}>
+                          {MEDIOS.find(m => m.id === medioSel)?.n}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* PARTE B — Rutas scrolleables */}
+                  <div style={{
+                    flex: 1,
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    padding: '8px 16px 24px',
+                    WebkitOverflowScrolling: 'touch'
+                  }} className="no-scrollbar">
+                    {/* Spinner de carga */}
+                    {loadingRoutes && (
+                      <div style={{
+                        textAlign: 'center', padding: '24px',
+                        color: '#8B949E', fontSize: '14px',
+                        display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', gap: '10px'
+                      }}>
+                        <div style={{
+                          width: '20px', height: '20px',
+                          border: '2px solid #30363D',
+                          borderTop: '2px solid #00C896',
+                          borderRadius: '50%',
+                          animation: 'spin 1s linear infinite'
+                        }} />
+                        Calculando rutas...
+                      </div>
+                    )}
+
+                    {/* Las 3 route cards */}
+                    {!loadingRoutes && rutas.map(ruta => (
+                      <div
+                        key={ruta.id}
+                        onClick={() => setSelectedRoute(ruta)}
+                        style={{
+                          background: selectedRoute?.id === ruta.id
+                            ? '#00C89612' : '#21262D',
+                          border: `2px solid ${
+                            selectedRoute?.id === ruta.id
+                              ? ruta.badgeColor : '#30363D'
+                          }`,
+                          borderRadius: '14px', padding: '14px',
+                          marginBottom: '10px', cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          marginBottom: '10px'
+                        }}>
+                          <div>
+                            <div style={{
+                              fontWeight: '600', color: '#F0F6FC',
+                              fontSize: '15px'
+                            }}>
+                              {ruta.nombre}
+                            </div>
+                            <div style={{
+                              color: '#8B949E', fontSize: '12px',
+                              marginTop: '2px'
+                            }}>
+                              {ruta.descripcion}
+                            </div>
+                          </div>
+                          <span style={{
+                            background: ruta.badgeColor + '20',
+                            color: ruta.badgeColor,
+                            border: `1px solid ${ruta.badgeColor}50`,
+                            borderRadius: '20px',
+                            padding: '3px 10px',
+                            fontSize: '10px', fontWeight: '700',
+                            height: 'fit-content', whiteSpace: 'nowrap'
+                          }}>
+                            {ruta.badge}
+                          </span>
+                        </div>
+
+                        <div style={{
+                          display: 'flex', gap: '4px',
+                          marginBottom: '10px'
+                        }}>
+                          {ruta.iconos.map((ic, i) => (
+                            <span key={i} style={{ fontSize: '20px' }}>
+                              {ic}
+                            </span>
+                          ))}
+                        </div>
+
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1fr 1fr',
+                          gap: '4px'
+                        }}>
+                          {[
+                            { v: ruta.tiempo + ' min',
+                              l: 'TIEMPO', c: '#F0F6FC' },
+                            { v: ruta.precio,
+                              l: 'PRECIO', c: '#F0F6FC' },
+                            { v: ruta.co2 + ' CO₂',
+                              l: 'EMISIONES', c: ruta.co2Color }
+                          ].map(m => (
+                            <div key={m.l} style={{ textAlign: 'center' }}>
+                              <div style={{
+                                fontWeight: '700', color: m.c,
+                                fontSize: '15px'
+                              }}>{m.v}</div>
+                              <div style={{
+                                color: '#8B949E', fontSize: '10px'
+                              }}>{m.l}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {selectedRoute?.id === ruta.id && (
+                          <div style={{
+                            marginTop: '10px', textAlign: 'center',
+                            color: ruta.badgeColor, fontSize: '13px',
+                            fontWeight: '600'
+                          }}>
+                            ✓ Seleccionada — toca Iniciar abajo
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* ── BOTÓN INICIAR ── */}
+                    {selectedRoute && !loadingRoutes && (
+                      <button
+                        onClick={() => startNavigation(selectedRoute)}
+                        style={{
+                          width: '100%',
+                          background: 'linear-gradient(135deg, #00C896, #00A878)',
+                          border: 'none', color: 'white',
+                          borderRadius: '14px', padding: '18px',
+                          fontSize: '17px', fontWeight: '700',
+                          cursor: 'pointer',
+                          display: 'flex', alignItems: 'center',
+                          justifyContent: 'center', gap: '10px',
+                          marginTop: '4px',
+                          boxShadow: '0 4px 20px rgba(0,200,150,0.3)'
+                        }}
+                      >
+                        ▶ Iniciar {selectedRoute.nombre.split(' ').slice(0,2).join(' ')}
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </MapContainer>
