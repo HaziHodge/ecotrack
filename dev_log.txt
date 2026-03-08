@@ -1,0 +1,16 @@
+
+> ruta-verde-root@0.1.0 dev
+> vite --port 3000
+
+
+  VITE v4.5.14  ready in 680 ms
+
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: use --host to expose
+11:27:57 PM [vite] hmr update /src/RutaVerde.jsx, /src/index.css
+11:28:13 PM [vite] hmr update /src/RutaVerde.jsx, /src/index.css
+11:33:37 PM [vite] hmr update /src/RutaVerde.jsx, /src/index.css
+12:07:55 AM [vite] hmr update /src/RutaVerde.jsx, /src/index.css
+12:07:58 AM [vite] hmr update /src/index.css
+12:11:37 AM [vite] page reload dist/index.html
+12:21:20 AM [vite] hmr update /src/RutaVerde.jsx, /src/index.css
