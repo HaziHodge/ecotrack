@@ -69,3 +69,9 @@ input { font-size: 16px !important; }
 .route-card {
   @apply transition-all duration-200 active:scale-[0.98] cursor-pointer border-2;
 }
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(0,200,150,0.4); }
+  70% { box-shadow: 0 0 0 12px rgba(0,200,150,0); }
+  100% { box-shadow: 0 0 0 0 rgba(0,200,150,0); }
+}

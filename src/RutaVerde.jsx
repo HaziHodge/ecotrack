@@ -56,6 +56,21 @@ const ALERTAS_TRAFICO = [
   }
 ]
 
+const MEDIOS = [
+  { id:'metro', i:'🚇', n:'Metro',
+    d:'3 min', c:'#EF4444',
+    rutaId:'verde' },
+  { id:'micro', i:'🚌', n:'Micro',
+    d:'5 min', c:'#FFD93D',
+    rutaId:'rapida' },
+  { id:'bipbici', i:'🚲', n:'BipBici',
+    d:'200m', c:'#00D4FF',
+    rutaId:'activa' },
+  { id:'scooter', i:'🛴', n:'Scooter',
+    d:'80m', c:'#FF8C42',
+    rutaId:'activa' }
+]
+
 // --- LOCAL UI COMPONENTS ---
 
 class PerfilErrorBoundary extends React.Component {
@@ -1676,259 +1691,278 @@ const ProfileComponent = ({ user, stats, onLogout, darkMode, setDarkMode }) => {
   );
 };
 
-const NavegacionActivaScreen = ({ ruta, userPos, onFinalizar, onCancelar, darkMode }) => {
-  if (!ruta || !ruta.instrucciones || ruta.instrucciones.length === 0) {
-    return (
-      <div style={{
-        position: 'fixed', inset: 0,
-        background: '#0D1117',
-        display: 'flex', alignItems: 'center',
-        justifyContent: 'center', flexDirection: 'column',
-        gap: '16px',
-        zIndex: 9999
-      }}>
-        <div style={{
-          width: '40px', height: '40px',
-          border: '3px solid #30363D',
-          borderTop: '3px solid #00C896',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}/>
-        <p style={{ color: '#8B949E', fontSize: '14px' }}>
-          Calculando ruta...
-        </p>
-      </div>
-    )
-  }
-  const [instruccionIdx, setInstruccionIdx] = useState(0);
-  const [tiempoRestante, setTiempoRestante] = useState(ruta.time);
-  const [distanciaRestante, setDistanciaRestante] = useState(ruta.distanciaKm);
-  const [posActual, setPosActual] = useState(userPos);
-  const [routePoints, setRoutePoints] = useState([]);
-  const [cargandoRuta, setCargandoRuta] = useState(true);
-  const [iniciado, setIniciado] = useState(Date.now());
-  const [recalculando, setRecalculando] = useState(false);
+const NavegacionActivaScreen = ({
+  nav, ruta, onCancelar, onSaltar, userLocation
+}) => {
+  const [stepIndex, setStepIndex] = useState(0)
+  const [elapsed, setElapsed] = useState(0)
+  const [co2, setCo2] = useState(0)
+  const [puntos, setPuntos] = useState(0)
 
-  // 1. Obtener ruta real con OSRM (gratuito, sin API key)
+  // Ticker cada segundo
   useEffect(() => {
-    const fetchRoute = async () => {
-      const origen = userPos;
-      const destino = ruta.destinoCoords || [userPos[0] + 0.025, userPos[1] + 0.032];
-      try {
-        const url = `https://router.project-osrm.org/route/v1/driving/${origen[1]},${origen[0]};${destino[1]},${destino[0]}?overview=full&geometries=geojson`;
-        const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
-        const data = await res.json();
-        if (data.routes?.[0]) {
-          const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-          setRoutePoints(coords);
-        } else {
-          setRoutePoints(buildFallbackRoute(origen, destino));
-        }
-      } catch {
-        setRoutePoints(buildFallbackRoute(origen, destino));
-      } finally {
-        setCargandoRuta(false);
-      }
-    };
-    fetchRoute();
-  }, []);
+    const interval = setInterval(() => {
+      setElapsed(s => s + 1)
+      // CO₂ sube según el medio de la ruta
+      const co2Rate = ruta.id === 'verde' ? 0.003
+        : ruta.id === 'rapida' ? 0.013 : 0
+      setCo2(c => parseFloat((c + co2Rate).toFixed(3)))
+      setPuntos(p => p + (ruta.id === 'activa' ? 2 : 1))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [ruta])
 
-  // 2. GPS watchPosition — seguimiento real
-  useEffect(() => {
-    if (!navigator.geolocation) return;
-    const id = navigator.geolocation.watchPosition(
-      (pos) => setPosActual([pos.coords.latitude, pos.coords.longitude]),
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
-    );
-    return () => navigator.geolocation.clearWatch(id);
-  }, []);
+  const minutosRestantes = Math.max(
+    0, ruta.tiempo - Math.floor(elapsed / 60)
+  )
 
-  // 3. Countdown tiempo y distancia (cada 30s)
-  useEffect(() => {
-    const iv = setInterval(() => {
-      setTiempoRestante(t => Math.max(0, t - 1));
-      setDistanciaRestante(d => Math.max(0, parseFloat((d - 0.05).toFixed(2))));
-    }, 30000);
-    return () => clearInterval(iv);
-  }, []);
+  const PASOS = [
+    { instruccion: 'Sal hacia Av. Providencia', dist: '150m', icon: '↑' },
+    { instruccion: 'Gira a la derecha en Tobalaba', dist: '400m', icon: '→' },
+    { instruccion: 'Entra al Metro Tobalaba', dist: '80m', icon: '🚇' },
+    { instruccion: 'Toma la Línea 1 dirección San Pablo', dist: '3 min', icon: '🚇' },
+    { instruccion: 'Baja en Metro Baquedano', dist: '200m', icon: '↓' },
+    { instruccion: 'Camina por Av. Italia', dist: '300m', icon: '↑' },
+    { instruccion: 'Has llegado a tu destino', dist: '0m', icon: '📍' }
+  ]
 
-  // 4. Avanzar instrucciones automáticamente
-  useEffect(() => {
-    if (ruta.instrucciones.length <= 1) return;
-    const segPorPaso = (ruta.time * 60) / ruta.instrucciones.length;
-    const iv = setInterval(() => {
-      setInstruccionIdx(i => Math.min(i + 1, ruta.instrucciones.length - 1));
-    }, segPorPaso * 1000);
-    return () => clearInterval(iv);
-  }, [ruta]);
-
-  // 5. Silent recalculation every 45 seconds
-  useEffect(() => {
-    const iv = setInterval(() => {
-      setRecalculando(true);
-      setTimeout(() => {
-        setRecalculando(false);
-      }, 2000);
-    }, 45000);
-    return () => clearInterval(iv);
-  }, []);
-
-  const esUltimoPaso = instruccionIdx === ruta.instrucciones.length - 1;
-  const progreso = Math.round(((ruta.distanciaKm - distanciaRestante) / ruta.distanciaKm) * 100);
-
-  const mapUrl = darkMode
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png';
-
-  const RecenterNav = ({ pos }) => {
-    const map = useMap();
-    useEffect(() => { map.setView(pos, 17, { animate: true }); }, [pos]);
-    return null;
-  };
-
-  const iconUsuarioNav = L.divIcon({
-    className: '',
-    html: `<div style="
-      width:24px;height:24px;
-      background:#3B82F6;
-      border:4px solid white;
-      border-radius:50%;
-      box-shadow:0 0 15px rgba(59,130,246,0.5);
-    "></div>`,
-    iconSize: [24, 24], iconAnchor: [12, 12]
-  });
+  const pasoActual = PASOS[Math.min(stepIndex, PASOS.length - 1)]
+  const pasoSiguiente = PASOS[Math.min(stepIndex + 1, PASOS.length - 1)]
 
   return (
-    <div className="fixed inset-0 z-[3000] flex flex-col bg-[#0D1117]">
-      {recalculando && (
-        <div className="fixed inset-0 z-[5000] bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center animate-fade-in">
-          <div className="bg-[#0D1117] border border-[#00C896] p-8 rounded-[32px] shadow-2xl flex flex-col items-center gap-4">
-            <RefreshCcw size={40} className="text-[#00C896] animate-spin" />
-            <p className="font-black text-white uppercase tracking-widest">Recalculando...</p>
+    <div style={{
+      position: 'fixed', inset: 0,
+      background: '#0D1117', zIndex: 2000,
+      display: 'flex', flexDirection: 'column'
+    }}>
+
+      {/* ── BANNER SUPERIOR — INSTRUCCIÓN ACTUAL ── */}
+      <div style={{
+        background: '#161B22',
+        borderBottom: '1px solid #30363D',
+        padding: '16px 20px',
+        flexShrink: 0
+      }}>
+        {/* Fila 1: distancia + instrucción */}
+        <div style={{
+          display: 'flex', alignItems: 'center',
+          gap: '14px', marginBottom: '10px'
+        }}>
+          <div style={{
+            background: '#00C896',
+            width: '56px', height: '56px',
+            borderRadius: '16px',
+            display: 'flex', alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '28px', flexShrink: 0
+          }}>
+            {pasoActual.icon}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{
+              color: '#8B949E', fontSize: '12px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px', marginBottom: '2px'
+            }}>
+              En {pasoActual.dist}
+            </div>
+            <div style={{
+              color: '#F0F6FC', fontSize: '18px',
+              fontWeight: '700', lineHeight: 1.2
+            }}>
+              {pasoActual.instruccion}
+            </div>
           </div>
         </div>
-      )}
 
-      {/* BARRA SUPERIOR (Waze Style) */}
-      <div className="fixed top-0 left-0 right-0 bg-[#0D1117]/90 backdrop-blur-md text-white px-5 py-6 z-[900] border-b border-white/10 h-[100px] flex items-center">
-        <div className="flex items-center gap-4 w-full">
-          <div className="w-14 h-14 bg-[#00C896] rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-green-500/20">
-            <Navigation size={28} className="text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#00C896] mb-1">
-              PASO {instruccionIdx + 1} / {ruta.instrucciones.length}
-            </p>
-            <p className="font-black text-base leading-tight text-white truncate">
-              {ruta.instrucciones[instruccionIdx]}
-            </p>
+        {/* Fila 2: siguiente paso + botón saltar */}
+        <div style={{
+          display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between',
+          background: '#21262D',
+          borderRadius: '10px', padding: '10px 14px'
+        }}>
+          <div style={{
+            color: '#8B949E', fontSize: '13px',
+            flex: 1
+          }}>
+            <span style={{ marginRight: '6px' }}>
+              Luego:
+            </span>
+            <span style={{ color: '#F0F6FC' }}>
+              {pasoSiguiente.icon} {
+                pasoSiguiente.instruccion
+              }
+            </span>
           </div>
           <button
-            onClick={() => setInstruccionIdx(i => Math.min(i + 1, ruta.instrucciones.length - 1))}
-            className="h-12 px-4 bg-white/5 rounded-2xl flex items-center justify-center gap-2 border border-white/10 hover:bg-white/10 transition-all font-black text-xs uppercase tracking-widest"
+            onClick={() => {
+              if (stepIndex < PASOS.length - 1) {
+                setStepIndex(i => i + 1)
+              }
+            }}
+            style={{
+              background: '#30363D',
+              border: 'none', color: '#F0F6FC',
+              padding: '6px 14px', borderRadius: '8px',
+              fontSize: '13px', fontWeight: '600',
+              cursor: 'pointer', flexShrink: 0,
+              marginLeft: '10px'
+            }}
           >
-            Saltar <ChevronRight size={16} />
+            Saltar ›
           </button>
         </div>
       </div>
 
-      {/* MAPA FULLSCREEN con la ruta dibujada */}
-      <div className="flex-1 relative min-h-0">
-        {cargandoRuta ? (
-          <div className="absolute inset-0 bg-slate-800 flex flex-col items-center justify-center gap-3">
-            <div className="w-10 h-10 border-4 border-[#00C896] border-t-transparent rounded-full animate-spin" />
-            <p className="text-white text-sm font-bold">Calculando tu ruta...</p>
-          </div>
-        ) : (
+      {/* ── MAPA (ocupa todo el espacio restante) ── */}
+      <div style={{ flex: 1, position: 'relative' }}>
+        <div style={{
+          position: 'absolute', inset: 0
+        }}>
           <MapContainer
-            center={posActual}
-            zoom={17}
-            scrollWheelZoom={false}
+            center={[-33.4489, -70.6693]}
+            zoom={16}
+            style={{ height: '100%', width: '100%' }}
             zoomControl={false}
-            className="w-full h-full"
           >
-            <TileLayer url={mapUrl} attribution="© CARTO" />
-            <RecenterNav pos={posActual} />
-
-            {/* LÍNEA DE RUTA */}
-            {routePoints.length > 0 && (
-              <>
-                {/* Sombra de la línea */}
-                <Polyline positions={routePoints} color="#1A1A2E" weight={10} opacity={0.3} />
-                {/* Línea principal */}
-                <Polyline positions={routePoints} color="#00C896" weight={6} opacity={0.95} />
-              </>
-            )}
-
-            {/* POSICIÓN USUARIO */}
-            <Marker position={posActual} icon={iconUsuarioNav} />
-
-            {/* DESTINO */}
-            {routePoints.length > 0 && (
+            <TileLayer
+              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              attribution=""
+            />
+            {/* Marcador usuario pulsante */}
+            {userLocation && (
               <Marker
-                position={routePoints[routePoints.length - 1]}
-                icon={customIcons.destination}
-              >
-                <Popup><p className="font-bold text-xs">Tu destino</p></Popup>
-              </Marker>
+                position={[userLocation.lat, userLocation.lng]}
+                icon={L.divIcon({
+                  html: `<div style="
+                    width:20px; height:20px;
+                    background:#00C896;
+                    border:3px solid white;
+                    border-radius:50%;
+                    box-shadow:0 0 0 6px rgba(0,200,150,0.3);
+                    animation: pulse 2s infinite;
+                  "></div>`,
+                  iconSize: [20, 20],
+                  iconAnchor: [10, 10],
+                  className: ''
+                })}
+              />
             )}
           </MapContainer>
-        )}
+        </div>
 
-        {/* Botón zoom in/out */}
-        <div className="absolute bottom-4 right-4 z-[1000] flex flex-col gap-2">
-          <button className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg text-[#1A1A2E] font-black text-lg">+</button>
-          <button className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg text-[#1A1A2E] font-black text-lg">−</button>
+        {/* Badge de ruta activa sobre el mapa */}
+        <div style={{
+          position: 'absolute', top: '12px',
+          left: '50%', transform: 'translateX(-50%)',
+          background: '#161B22',
+          border: `1px solid ${ruta.badgeColor || '#00C896'}`,
+          borderRadius: '20px', padding: '6px 16px',
+          zIndex: 500, fontSize: '13px',
+          fontWeight: '600',
+          color: ruta.badgeColor || '#00C896'
+        }}>
+          {ruta.nombre}
         </div>
       </div>
 
-      {/* PANEL INFERIOR (Fixed above tab bar) */}
-      <div className="fixed bottom-[60px] left-0 right-0 bg-[#0D1117]/95 backdrop-blur-md px-5 pt-4 pb-6 z-[900] border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
-        <div className="w-12 h-1 bg-white/10 rounded-full mx-auto mb-6" />
-
-        <div className="flex justify-between items-center mb-6 px-2">
-          <div className="text-center">
-            <p className="text-2xl font-black text-white leading-none">{tiempoRestante}</p>
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2">min rest.</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-black text-[#00C896] leading-none">{distanciaRestante.toFixed(1)}</p>
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2">km rest.</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-black text-amber-500 leading-none">+{ruta.pts}</p>
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-2">puntos</p>
-          </div>
+      {/* ── PANEL INFERIOR — MÉTRICAS + CANCELAR ── */}
+      <div style={{
+        background: '#161B22',
+        borderTop: '1px solid #30363D',
+        padding: '16px 20px 32px',
+        flexShrink: 0
+      }}>
+        {/* Métricas en tiempo real */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '8px', marginBottom: '16px'
+        }}>
+          {[
+            {
+              v: minutosRestantes + ' min',
+              l: 'RESTANTE',
+              c: '#F0F6FC'
+            },
+            {
+              v: (nav.distanciaTotal -
+                  nav.distanciaTotal *
+                  (elapsed / (ruta.tiempo * 60))
+                ).toFixed(1) + ' km',
+              l: 'DISTANCIA',
+              c: '#58A6FF'
+            },
+            {
+              v: co2.toFixed(2) + ' kg',
+              l: 'CO₂',
+              c: ruta.id === 'activa'
+                ? '#00C896' : '#FFD93D'
+            },
+            {
+              v: '+' + puntos,
+              l: 'PUNTOS',
+              c: '#00C896'
+            }
+          ].map(m => (
+            <div key={m.l} style={{
+              background: '#21262D',
+              borderRadius: '10px',
+              padding: '10px 6px',
+              textAlign: 'center',
+              border: '1px solid #30363D'
+            }}>
+              <div style={{
+                fontWeight: '700', fontSize: '15px',
+                color: m.c
+              }}>
+                {m.v}
+              </div>
+              <div style={{
+                color: '#8B949E', fontSize: '10px',
+                marginTop: '2px'
+              }}>
+                {m.l}
+              </div>
+            </div>
+          ))}
         </div>
 
-        <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/10 mb-6">
-          <Leaf size={18} className="text-[#00C896]" />
-          <div className="flex-1">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Ahorrando CO₂ vs auto</p>
-          </div>
-          <p className="font-black text-lg text-[#00C896]">{(metricas.calcularCO2Evitado(ruta.distanciaKm - distanciaRestante, ruta.medio)).toFixed(2)} kg</p>
+        {/* Barra de progreso del viaje */}
+        <div style={{
+          height: '4px', background: '#30363D',
+          borderRadius: '2px', marginBottom: '16px',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            height: '100%', background: '#00C896',
+            borderRadius: '2px',
+            width: `${Math.min(100,
+              (elapsed / (ruta.tiempo * 60)) * 100
+            )}%`,
+            transition: 'width 1s linear'
+          }} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Button
-            onClick={onCancelar}
-            variant="outline"
-            className="!border-red-500/50 !text-red-500 !bg-transparent hover:!bg-red-500/10 h-14 text-sm"
-          >
-            <X size={20} /> Cancelar
-          </Button>
-          <Button
-            onClick={onFinalizar}
-            className="h-14 text-sm"
-          >
-            {esUltimoPaso ? '¡Llegué!' : 'Finalizar'}
-          </Button>
-        </div>
+        {/* Botón cancelar */}
+        <button
+          onClick={onCancelar}
+          style={{
+            width: '100%', padding: '14px',
+            background: 'transparent',
+            border: '2px solid #FF6B6B',
+            color: '#FF6B6B', borderRadius: '12px',
+            fontSize: '15px', fontWeight: '700',
+            cursor: 'pointer'
+          }}
+        >
+          ✕ Cancelar viaje
+        </button>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // Helper para ruta de fallback cuando OSRM no responde
 function buildFallbackRoute(origen, destino) {
@@ -1980,6 +2014,8 @@ export default function RutaVerde() {
 
   const [navegacionActiva, setNavegacionActiva] = useState(false);
   const [rutaActiva, setRutaActiva] = useState(null);
+  const [activeNavigation, setActiveNavigation] = useState(null)
+  const [medioSel, setMedioSel] = useState(null)
 
   const mapRef = useRef(null)
 
@@ -2048,8 +2084,22 @@ export default function RutaVerde() {
     setSearchQuery(place.nombre)
     setSearchResults([])
     setDestinoNombre(place.nombre)
+    setMedioSel(null)
     mapRef.current?.flyTo([place.lat, place.lon], 14, { duration: 1.5 })
     calcularRutas(place.lat, place.lon, place.nombre)
+  }
+
+  const selectMedio = (medio) => {
+    setMedioSel(medio.id)
+    setSelectedRoute(null) // deseleccionar ruta previa
+
+    // Reordenar: poner primero la ruta del medio elegido
+    const reordenadas = [...rutas].sort((a, b) => {
+      if (a.id === medio.rutaId) return -1
+      if (b.id === medio.rutaId) return 1
+      return 0
+    })
+    setRutas(reordenadas)
   }
 
   const calcularRutas = async (destLat, destLon, destNombre) => {
@@ -2088,6 +2138,18 @@ export default function RutaVerde() {
         mapRef.current?.flyTo([loc.lat, loc.lng], 15, { duration: 1.5 })
       })
     }
+  }
+
+  const startNavigation = (ruta) => {
+    setActiveNavigation({
+      ruta,
+      startTime: Date.now(),
+      distanciaTotal: parseFloat(routeDistance) || 5.0,
+      distanciaRecorrida: 0,
+      co2Acumulado: 0,
+      puntosAcumulados: 0
+    })
+    setShowRoutePanel(false)
   }
 
   const { pos: userPos } = useGeolocalizacion();
@@ -2257,13 +2319,16 @@ export default function RutaVerde() {
 
   return (
     <ErrorBoundary>
-      {navegacionActiva && rutaActiva && (
+      {activeNavigation && (
         <NavegacionActivaScreen
-          ruta={rutaActiva}
-          userPos={userPos}
-          onFinalizar={handleFinalizarViaje}
-          onCancelar={handleCancelarNavegacion}
-          darkMode={darkMode}
+          nav={activeNavigation}
+          ruta={activeNavigation.ruta}
+          userLocation={userLocation}
+          onCancelar={() => {
+            setActiveNavigation(null)
+            setActiveTab('mapa')
+          }}
+          onSaltar={() => {}}
         />
       )}
       <div className={`min-h-screen bg-[#0D1117] text-[#F0F6FC] font-['Inter'] selection:bg-[#00C896] selection:text-white transition-colors duration-500 overflow-hidden`}>
@@ -2437,19 +2502,45 @@ export default function RutaVerde() {
                     <button onClick={() => { setShowRoutePanel(false); setSearchQuery(''); setRutas([]); }} style={{ background: '#21262D', border: '1px solid #30363D', color: '#8B949E', width: '32px', height: '32px', borderRadius: '8px', cursor: 'pointer', fontSize: '16px' }}>✕</button>
                   </div>
                   <div style={{ overflowX: 'auto', display: 'flex', gap: '8px', padding: '12px 0', borderBottom: '1px solid #30363D', marginBottom: '12px' }} className="no-scrollbar">
-                    {[
-                      { i:'🚇', n:'Metro', d:'3 min', c:'#EF4444' },
-                      { i:'🚌', n:'Micro', d:'5 min', c:'#FFD93D' },
-                      { i:'🚲', n:'BipBici', d:'200m', c:'#00D4FF' },
-                      { i:'🛴', n:'Scooter', d:'80m', c:'#FF8C42' }
-                    ].map(t => (
-                      <div key={t.n} style={{ background: '#21262D', border: `1px solid ${t.c}30`, borderRadius: '10px', padding: '8px 12px', flexShrink: 0, textAlign: 'center', minWidth: '72px' }}>
-                        <div style={{ fontSize: '18px' }}>{t.i}</div>
-                        <div style={{ color: t.c, fontSize: '11px', fontWeight: '600', marginTop: '2px' }}>{t.n}</div>
-                        <div style={{ color: '#8B949E', fontSize: '10px' }}>{t.d}</div>
+                    {MEDIOS.map(medio => (
+                      <div
+                        key={medio.id}
+                        onClick={() => selectMedio(medio)}
+                        style={{
+                          background: medioSel === medio.id
+                            ? medio.c + '30' : '#21262D',
+                          border: `2px solid ${
+                            medioSel === medio.id ? medio.c : medio.c + '30'
+                          }`,
+                          borderRadius: '12px',
+                          padding: '10px 14px',
+                          flexShrink: 0,
+                          textAlign: 'center',
+                          minWidth: '76px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          transform: medioSel === medio.id
+                            ? 'scale(1.05)' : 'scale(1)'
+                        }}
+                      >
+                        <div style={{ fontSize: '18px' }}>{medio.i}</div>
+                        <div style={{ color: medio.c, fontSize: '11px', fontWeight: '600', marginTop: '2px' }}>{medio.n}</div>
+                        <div style={{ color: '#8B949E', fontSize: '10px' }}>{medio.d}</div>
                       </div>
                     ))}
                   </div>
+
+                  {medioSel && (
+                    <div style={{
+                      color: '#8B949E', fontSize: '13px',
+                      marginBottom: '10px', textAlign: 'center'
+                    }}>
+                      Mostrando rutas con{' '}
+                      <span style={{ color: '#F0F6FC', fontWeight: '600' }}>
+                        {MEDIOS.find(m => m.id === medioSel)?.n}
+                      </span>
+                    </div>
+                  )}
                   {loadingRoutes ? (
                     <div style={{ textAlign: 'center', padding: '24px', color: '#8B949E', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
                       <div style={{ width: '20px', height: '20px', border: '2px solid #30363D', borderTop: '2px solid #00C896', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
@@ -2481,7 +2572,21 @@ export default function RutaVerde() {
                         </div>
                       ))}
                       {selectedRoute && (
-                        <button onClick={() => startNavigation(selectedRoute)} style={{ width: '100%', background: 'linear-gradient(135deg, #00C896, #00A878)', border: 'none', color: 'white', borderRadius: '14px', padding: '16px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>▶ Iniciar {selectedRoute.nombre.split(' ')[2]}</button>
+                        <button
+                          onClick={() => startNavigation(selectedRoute)}
+                          style={{
+                            width: '100%',
+                            background: 'linear-gradient(135deg, #00C896, #00A878)',
+                            border: 'none', color: 'white',
+                            borderRadius: '14px', padding: '16px',
+                            fontSize: '16px', fontWeight: '700',
+                            cursor: 'pointer', marginTop: '4px',
+                            display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', gap: '8px'
+                          }}
+                        >
+                          ▶ INICIAR VIAJE
+                        </button>
                       )}
                     </>
                   )}
