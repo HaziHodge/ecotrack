@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useRef, useMemo, Suspense, lazy, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
+
+// Leaflet Icon Fix - unpkg CDN
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 import {
   Home, Map as MapIcon, Milestone, Award, User, Search, ArrowLeftRight,
   Leaf, Star, Zap, Navigation, Bell, ChevronRight, CheckCircle2,
@@ -9,6 +17,263 @@ import {
   Wind, MapPin, Layers, Coffee, Ticket, Footprints, ShieldCheck, QrCode,
   Eye, Trophy
 } from 'lucide-react';
+
+const ALERTAS_TRAFICO = [
+  {
+    id: 'a1', tipo: 'obras',
+    lat: -33.4372, lng: -70.6506,
+    titulo: 'Obras viales',
+    descripcion: 'Av. Providencia cortada parcialmente',
+    color: '#FF6B6B', icon: '🚧', severidad: 'alta'
+  },
+  {
+    id: 'a2', tipo: 'accidente',
+    lat: -33.4200, lng: -70.6080,
+    titulo: 'Accidente',
+    descripcion: 'Colisión en Costanera Norte km 3',
+    color: '#FF8C42', icon: '⚠️', severidad: 'media'
+  },
+  {
+    id: 'a3', tipo: 'congestion',
+    lat: -33.4569, lng: -70.6483,
+    titulo: 'Congestión alta',
+    descripcion: 'Diagonal Paraguay - lento',
+    color: '#FFD93D', icon: '🚗', severidad: 'media'
+  },
+  {
+    id: 'a4', tipo: 'corte',
+    lat: -33.4380, lng: -70.6830,
+    titulo: 'Corte de calle',
+    descripcion: 'Av. Santa Rosa - desvío activo',
+    color: '#FF6B6B', icon: '🚫', severidad: 'alta'
+  },
+  {
+    id: 'a5', tipo: 'metro',
+    lat: -33.4689, lng: -70.6320,
+    titulo: 'Metro en mantención',
+    descripcion: 'L4 con frecuencia reducida',
+    color: '#58A6FF', icon: '🚇', severidad: 'baja'
+  }
+]
+
+const MEDIOS = [
+  { id:'metro', i:'🚇', n:'Metro',
+    d:'3 min', c:'#EF4444',
+    rutaId:'verde' },
+  { id:'micro', i:'🚌', n:'Micro',
+    d:'5 min', c:'#FFD93D',
+    rutaId:'rapida' },
+  { id:'bipbici', i:'🚲', n:'BipBici',
+    d:'200m', c:'#00D4FF',
+    rutaId:'activa' },
+  { id:'scooter', i:'🛴', n:'Scooter',
+    d:'80m', c:'#FF8C42',
+    rutaId:'activa' }
+]
+
+// --- LOCAL UI COMPONENTS ---
+
+class PerfilErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          padding: '40px 20px',
+          textAlign: 'center',
+          background: '#0D1117',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '16px'
+        }}>
+          <div style={{ fontSize: '48px' }}>👤</div>
+          <div style={{
+            color: '#F0F6FC',
+            fontSize: '18px',
+            fontWeight: '700'
+          }}>
+            Hazi
+          </div>
+          <div style={{ color: '#8B949E', fontSize: '14px' }}>
+            BROTE VERDE · Santiago
+          </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '12px', width: '100%',
+            maxWidth: '320px', marginTop: '8px'
+          }}>
+            {[
+              { v: '1.1kg', l: 'CO₂ AHORRADO', c: '#00C896' },
+              { v: '1', l: 'VIAJES PÚBLICOS', c: '#58A6FF' },
+              { v: '5.2km', l: 'DISTANCIA BICI', c: '#FFD93D' },
+              { v: '$1.200', l: 'DINERO AHORRADO', c: '#00C896' }
+            ].map(m => (
+              <div key={m.l} style={{
+                background: '#161B22',
+                border: '1px solid #30363D',
+                borderRadius: '14px', padding: '16px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  fontSize: '20px', fontWeight: '700',
+                  color: m.c
+                }}>{m.v}</div>
+                <div style={{
+                  color: '#8B949E', fontSize: '11px',
+                  marginTop: '4px'
+                }}>{m.l}</div>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => this.setState({ hasError: false })}
+            style={{
+              background: '#00C896', border: 'none',
+              color: 'white', padding: '12px 24px',
+              borderRadius: '12px', cursor: 'pointer',
+              fontSize: '15px', fontWeight: '600',
+              marginTop: '16px'
+            }}
+          >
+            Recargar perfil
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
+const Input = ({ className = "", ...props }) => (
+  <input
+    className={`w-full p-4 bg-slate-900/50 border border-white/10 rounded-2xl outline-none focus:border-[#00C896] transition-all text-white placeholder:text-slate-500 ${className}`}
+    {...props}
+  />
+);
+
+const Badge = ({ children, className = "", variant = "primary" }) => {
+  const variants = {
+    primary: "bg-[#00C896]/10 text-[#00C896] border-[#00C896]/20",
+    secondary: "bg-slate-800 text-slate-300 border-slate-700",
+    accent: "bg-amber-500/10 text-amber-500 border-amber-500/20"
+  };
+  return (
+    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${variants[variant]} ${className}`}>
+      {children}
+    </span>
+  );
+};
+
+const Skeleton = ({ className }) => (
+  <div className={`animate-pulse bg-gray-200 dark:bg-slate-800 rounded-3xl ${className}`}></div>
+);
+
+const Card = ({ children, className = "", delay = 0 }) => (
+  <div
+    style={{ animationDelay: `${delay}ms` }}
+    className={`bg-white dark:bg-slate-900 rounded-3xl shadow-xl shadow-green-900/5 p-5 border border-white/20 dark:border-slate-800 hover:scale-[1.01] transition-all duration-300 animate-slide-up fill-mode-forwards ${className}`}
+  >
+    {children}
+  </div>
+);
+
+const Button = ({ children, onClick, variant = 'primary', className = "", fullWidth = false, disabled = false, loading = false }) => {
+  const variants = {
+    primary: "bg-gradient-to-r from-[#00C896] to-[#00A87E] text-white shadow-lg shadow-green-500/30 hover:shadow-green-500/50",
+    secondary: "bg-[#1A1A2E] text-white",
+    ghost: "bg-transparent text-[#4B5563] dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800",
+    outline: "border-2 border-[#00C896] text-[#00A87E] hover:bg-green-50 dark:hover:bg-green-900/10"
+  };
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled || loading}
+      className={`px-6 py-4 rounded-2xl font-black transition-all active:scale-95 flex items-center justify-center gap-2 ${variants[variant]} ${fullWidth ? 'w-full' : ''} ${(disabled || loading) ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
+    >
+      {loading ? (
+        <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+      ) : children}
+    </button>
+  );
+};
+
+const RouteCard = ({ route, selected, onSelect }) => (
+  <div
+    onClick={onSelect}
+    style={{
+      background: selected ? '#1a2f26' : '#21262D',
+      border: `2px solid ${selected
+        ? route.badgeColor : '#30363D'}`,
+      borderRadius: '14px',
+      padding: '14px',
+      marginBottom: '10px',
+      cursor: 'pointer',
+      transition: 'all 0.2s'
+    }}
+  >
+    <div style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: '8px'
+    }}>
+      <div>
+        <div style={{ color: '#F0F6FC', fontWeight: '600', fontSize: '15px' }}>
+          {route.nombre}
+        </div>
+        <div style={{ color: '#8B949E', fontSize: '12px', marginTop: '2px' }}>
+          {route.descripcion}
+        </div>
+      </div>
+      <span style={{
+        background: route.badgeColor + '20',
+        color: route.badgeColor,
+        border: `1px solid ${route.badgeColor}50`,
+        borderRadius: '20px',
+        padding: '3px 10px',
+        fontSize: '10px',
+        fontWeight: '700'
+      }}>
+        {route.badge}
+      </span>
+    </div>
+
+    <div style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>
+      {route.iconos.map((ic, i) => (
+        <span key={i} style={{ fontSize: '18px' }}>{ic}</span>
+      ))}
+    </div>
+
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px' }}>
+      {[
+        { valor: route.tiempo + ' min', label: 'TIEMPO', color: '#F0F6FC' },
+        { valor: route.precio, label: 'PRECIO', color: '#F0F6FC' },
+        { valor: route.co2, label: 'CO₂', color: route.co2Color }
+      ].map(m => (
+        <div key={m.label} style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '15px', fontWeight: '700', color: m.color }}>{m.valor}</div>
+          <div style={{ fontSize: '10px', color: '#8B949E' }}>{m.label}</div>
+        </div>
+      ))}
+    </div>
+
+    {selected && (
+      <div style={{ marginTop: '10px', textAlign: 'center', color: route.badgeColor, fontSize: '13px', fontWeight: '600' }}>
+        ✓ Seleccionada — toca "Iniciar" abajo
+      </div>
+    )}
+  </div>
+);
 
 // --- UTILS & HOOKS (Inlined) ---
 
@@ -412,7 +677,7 @@ const CityMap = ({
   const destTrigger = useRef(0);
 
   const mapUrl = darkMode
-    ? 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png'
+    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
     : 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png';
 
   // Fetch sugerencias Nominatim — debounced
@@ -452,13 +717,13 @@ const CityMap = ({
     finally { setFetchingRoute(false); }
   }, [pos, onSearchSelect]);
 
-  // Solo re-centra cuando cambia destino (no en cada render)
+  // Solo re-centra cuando cambia destino (no en cada render) — FIX #3
   const RecenterOnDest = ({ dest }) => {
     const map = useMap();
     const prev = useRef(null);
     useEffect(() => {
       if (dest && JSON.stringify(dest) !== JSON.stringify(prev.current)) {
-        map.setView(dest, 15, { animate: true });
+        map.flyTo(dest, 15, { duration: 1.5 });
         prev.current = dest;
       }
     }, [dest]);
@@ -481,76 +746,16 @@ const CityMap = ({
   const pts = routePreview || localRoutePoints;
 
   return (
-    <div className={`relative bg-[#F8FAF9] dark:bg-slate-900 w-full h-full overflow-hidden ${className}`}>
-
-      {/* ── BUSCADOR ── z-[2000] para estar SOBRE todo lo demás */}
-      <div className="absolute top-3 left-3 right-3 z-[2000]">
-        <div className={`bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border flex items-center gap-2 px-4 py-3
-          ${darkMode ? 'border-slate-700' : 'border-gray-200'}`}>
-          {searchBusy
-            ? <div className="w-4 h-4 border-2 border-[#00C896] border-t-transparent rounded-full animate-spin shrink-0" />
-            : <Search size={16} className="text-[#00C896] shrink-0" />
-          }
-          <input
-            ref={searchRef}
-            type="text"
-            placeholder="¿A dónde vas?"
-            value={mapQuery}
-            onChange={e => handleMapSearch(e.target.value)}
-            className="bg-transparent flex-1 text-sm font-bold text-gray-900 dark:text-white placeholder:text-gray-400 placeholder:font-normal outline-none"
-          />
-          {mapQuery.length > 0 && (
-            <button
-              onClick={() => { setMapQuery(''); setMapSuggestions([]); setLocalRoutePoints([]); }}
-              className="text-gray-400 hover:text-gray-600 shrink-0"
-            >
-              <X size={14} />
-            </button>
-          )}
-        </div>
-
-        {/* Sugerencias */}
-        {mapSuggestions.length > 0 && (
-          <div className="mt-1 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden">
-            {mapSuggestions.slice(0, 5).map((s, i) => (
-              <div
-                key={i}
-                onClick={() => handleSelectSuggestion(s)}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-green-50 dark:hover:bg-slate-700 cursor-pointer border-b border-gray-50 dark:border-slate-700 last:border-none transition-colors active:bg-green-100"
-              >
-                <MapPin size={14} className="text-[#00C896] shrink-0" />
-                <div className="min-w-0">
-                  <p className="font-bold text-xs text-gray-900 dark:text-white truncate">
-                    {s.display_name.split(',')[0]}
-                  </p>
-                  <p className="text-[10px] text-gray-400 truncate">
-                    {s.display_name.split(',').slice(1, 3).join(', ').trim()}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Cargando ruta preview */}
-        {fetchingRoute && (
-          <div className="mt-1 bg-white dark:bg-slate-800 rounded-xl px-4 py-2 shadow-lg border border-gray-100 dark:border-slate-700 flex items-center gap-2">
-            <div className="w-3 h-3 border-2 border-[#00C896] border-t-transparent rounded-full animate-spin" />
-            <span className="text-[10px] font-bold text-gray-500">Calculando ruta...</span>
-          </div>
-        )}
-      </div>
+    <div className={`relative bg-[#0D1117] w-full h-full overflow-hidden ${className}`}>
 
       {/* Botón centrar en usuario */}
       <button
         id="rvCenterTrigger"
         onClick={() => {
           destTrigger.current = 0;
-          // trigger CenterOnUser via incrementing centerTrigger if it was passed as prop,
-          // or handle locally if we want to force re-center
-          if (onSearchSelect) onSearchSelect(null, null); // clear destination to refocus
+          if (onSearchSelect) onSearchSelect(null, null);
         }}
-        className="absolute bottom-6 right-4 z-[1500] w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-2xl border border-gray-100 dark:border-slate-700 text-[#00C896] active:scale-95 transition-all"
+        className="absolute bottom-20 right-4 z-[1500] w-12 h-12 bg-[#161B22] rounded-2xl flex items-center justify-center shadow-2xl border border-[#30363D] text-[#00C896] active:scale-95 transition-all"
       >
         <Locate size={20} />
       </button>
@@ -727,10 +932,6 @@ const CSSIllustration = ({ type }) => {
   return null;
 };
 
-const Skeleton = ({ className }) => (
-  <div className={`animate-pulse bg-gray-200 dark:bg-slate-800 rounded-3xl ${className}`}></div>
-);
-
 const CountUp = ({ end, duration = 2000, decimals = 0 }) => {
   const [count, setCount] = useState(0);
   useEffect(() => {
@@ -745,15 +946,6 @@ const CountUp = ({ end, duration = 2000, decimals = 0 }) => {
   }, [end, duration]);
   return <span>{decimals > 0 ? count.toFixed(decimals) : Math.floor(count)}</span>;
 };
-
-const Card = ({ children, className = "", delay = 0 }) => (
-  <div
-    style={{ animationDelay: `${delay}ms` }}
-    className={`bg-white dark:bg-slate-900 rounded-3xl shadow-xl shadow-green-900/5 p-5 border border-white/20 dark:border-slate-800 hover:scale-[1.01] transition-all duration-300 animate-slide-up fill-mode-forwards ${className}`}
-  >
-    {children}
-  </div>
-);
 
 const ConfettiEffect = ({ onComplete }) => {
   const [pieces, setPieces] = useState([]);
@@ -793,63 +985,19 @@ const ConfettiEffect = ({ onComplete }) => {
   );
 };
 
-const Button = ({ children, onClick, variant = 'primary', className = "", fullWidth = false, disabled = false, loading = false }) => {
-  const variants = {
-    primary: "bg-gradient-to-r from-[#00C896] to-[#00A87E] text-white shadow-lg shadow-green-500/30 hover:shadow-green-500/50",
-    secondary: "bg-[#1A1A2E] text-white",
-    ghost: "bg-transparent text-[#4B5563] dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800",
-    outline: "border-2 border-[#00C896] text-[#00A87E] hover:bg-green-50 dark:hover:bg-green-900/10"
-  };
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled || loading}
-      className={`px-6 py-4 rounded-2xl font-black transition-all active:scale-95 flex items-center justify-center gap-2 ${variants[variant]} ${fullWidth ? 'w-full' : ''} ${(disabled || loading) ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
-    >
-      {loading ? (
-        <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-      ) : children}
-    </button>
-  );
-};
-
 // Dynamic imports for screens
-const HomeScreen = ({ user, onNavigate, stats, darkMode, alertas, alertasCargando }) => <HomeComponent user={user} onNavigate={onNavigate} stats={stats} darkMode={darkMode} alertas={alertas} alertasCargando={alertasCargando} />;
-const RoutePlanner = ({ onStart, destination, darkMode }) => <RoutePlannerComponent onStart={onStart} destination={destination} darkMode={darkMode} />;
-const LiveMapScreen = ({ darkMode, onNavigateToRutas }) => <LiveMapComponent darkMode={darkMode} onNavigateToRutas={onNavigateToRutas} />;
+const HomeScreen = ({ user, onNavigate, stats, darkMode, alertas, alertasCargando }) => <HomeComponent user={user} onNavigate={onNavigate} stats={stats} alertas={alertas} alertasCargando={alertasCargando} />;
+const RoutePlanner = ({ onStart, destination, destName, darkMode }) => <RoutePlannerComponent onStart={onStart} destination={destination} destName={destName} darkMode={darkMode} />;
 const GamificationScreen = ({ points, showToast, redeeming, setRedeeming, co2Total }) => <GamificationComponent points={points} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} co2Total={co2Total} />;
 const ProfileScreen = ({ user, stats, onLogout, darkMode, setDarkMode }) => <ProfileComponent user={user} stats={stats} onLogout={onLogout} darkMode={darkMode} setDarkMode={setDarkMode} />;
 
 // --- PANTALLAS ---
 
-const HomeComponent = ({ user, onNavigate, stats, darkMode, alertas, alertasCargando }) => {
-  const getMensaje = (nombre) => {
-    const h = new Date().getHours();
-    if (h < 9) return `Buenos días, ${nombre}. ¿Vamos en metro hoy? 🚇`;
-    if (h < 14) return `¡Buen día! Cada viaje sostenible cuenta, ${nombre}. 🌿`;
-    if (h < 19) return `¿Vuelta a casa en bici, ${nombre}? 🚴`;
-    return `Terminaste el día con ${stats.co2Total.toFixed(1)}kg menos de CO₂. ¡Bien! 🌱`;
-  };
-
-  const usuariosSimulados = 47 + (Math.floor(Date.now() / 86400000) % 30);
-
+const HomeComponent = ({ user, onNavigate, stats, alertas, alertasCargando }) => {
   const [from, setFrom] = useState("Tu ubicación");
   const [search, setSearch] = useState("");
   const [suggestions, setSuggestions] = useState([]);
-  const [isShaking, setIsShaking] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [swapping, setSwapping] = useState(false);
-
-  const handleRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1500);
-  };
-
-  const suggestedRoutes = [
-    { id: 1, name: "Tobalaba", time: "12 min", mode: <Train size={14} />, co2: "Muy bajo", color: "bg-green-100 text-green-700" },
-    { id: 2, name: "Costanera Center", time: "25 min", mode: <Bike size={14} />, co2: "Zero", color: "bg-blue-100 text-blue-700" },
-    { id: 3, name: "Parque Arauco", time: "40 min", mode: <Car size={14} />, co2: "Medio", color: "bg-yellow-100 text-yellow-700" },
-  ];
+  const usuariosSimulados = 47 + (Math.floor(Date.now() / 86400000) % 30);
 
   const handleSearch = async (query) => {
     setSearch(query);
@@ -859,18 +1007,7 @@ const HomeComponent = ({ user, onNavigate, stats, darkMode, alertas, alertasCarg
         const data = await res.json();
         setSuggestions(data);
       } catch (e) { console.error(e); }
-    } else {
-      setSuggestions([]);
-    }
-  };
-
-  const onSearchSubmit = (coords = null) => {
-    if (!search) {
-      setIsShaking(true);
-      setTimeout(() => setIsShaking(false), 500);
-      return;
-    }
-    onNavigate('rutas', coords);
+    } else { setSuggestions([]); }
   };
 
   const alertaPrincipal = alertas?.find(a => a.severity === 'error')
@@ -878,206 +1015,152 @@ const HomeComponent = ({ user, onNavigate, stats, darkMode, alertas, alertasCarg
     || alertas?.[0];
 
   return (
-    <div className={`space-y-6 pb-40 animate-fade-in transition-transform duration-300 relative ${refreshing ? 'translate-y-12' : ''}`}>
-      {refreshing && (
-        <div className="absolute top-0 left-0 right-0 flex justify-center -translate-y-10">
-           <div className="w-8 h-8 border-4 border-[#00C896] border-t-transparent rounded-full animate-spin"></div>
+    <div style={{ padding: '20px', paddingBottom: '24px', minHeight: '100%' }} className="space-y-6 animate-fade-in relative z-10">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-black text-white leading-tight">Hola, {user?.name?.split(' ')[0] || 'Viajero'} 👋</h1>
+        <div className="flex items-center gap-2">
+          <p className="text-[#8B949E] text-xs font-bold flex items-center gap-1"><MapPin size={12} className="text-[#00C896]" /> {user.city}, Chile</p>
+          <span className="bg-[#00C896]/10 text-[#00C896] text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">{usuariosSimulados} activos</span>
         </div>
-      )}
-      <header className="flex justify-between items-start" onClick={handleRefresh}>
-        <div className="max-w-[70%]">
-          <h1 className="text-3xl font-black text-[#0D1B2A] dark:text-white leading-tight tracking-tight">Hola, {user.name} 👋</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <p className="text-[#4B5563] dark:text-slate-400 flex items-center gap-1 font-bold"><MapPin size={14} className="text-[#00C896]" /> {user.city}, Chile</p>
-            <span className="bg-[#00C896]/10 text-[#00C896] text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">{usuariosSimulados} activos</span>
-          </div>
-        </div>
-        <button className="relative w-14 h-14 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-xl border border-gray-50 dark:border-slate-700 transition-transform hover:scale-110 active:scale-95">
-          <Bell size={24} className="text-[#1A1A2E] dark:text-white" />
-          <span className="absolute top-4 right-4 w-3 h-3 bg-[#FF6B6B] rounded-full border-2 border-white dark:border-slate-800"></span>
-        </button>
-      </header>
+      </div>
 
-      <Card className={`!p-6 space-y-4 relative overflow-visible ${isShaking ? 'animate-shake' : ''}`} delay={100}>
-        <div className="space-y-3 relative">
-          <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800/50 rounded-2xl border border-gray-100 dark:border-slate-700 focus-within:border-[#00C896] transition-all">
-            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-            <input
-              type="text"
-              placeholder="¿Desde dónde?"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              className="bg-transparent w-full focus:outline-none text-[#0D1B2A] dark:text-white font-bold placeholder:text-gray-400 dark:placeholder:text-slate-600"
-            />
+      <div style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: '16px' }} className="p-4 space-y-3 relative">
+        <div className="space-y-2">
+          <div style={{ background: '#21262D' }} className="flex items-center gap-3 p-3 rounded-xl border border-[#30363D]">
+            <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
+            <input type="text" readOnly value={from} className="bg-transparent w-full outline-none text-white text-sm font-bold" />
           </div>
 
-          <button
-            onClick={() => {
-              setSwapping(true);
-              const tmp = from; setFrom(search); setSearch(tmp);
-              setTimeout(() => setSwapping(false), 500);
-            }}
-            className={`absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white dark:bg-slate-800 rounded-full shadow-lg border border-gray-100 dark:border-slate-700 flex items-center justify-center text-[#00C896] z-10 transition-all duration-500 ${swapping ? 'rotate-180 scale-125' : 'hover:rotate-180'}`}
-          >
-            <ArrowLeftRight size={18} className={`rotate-90 transition-transform ${swapping ? 'scale-75' : ''}`} />
-          </button>
-
-          <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800/50 rounded-2xl border border-gray-100 dark:border-slate-700 focus-within:border-[#00C896] transition-all relative">
-            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+          <div style={{ background: '#21262D' }} className="flex items-center gap-3 p-3 rounded-xl border border-[#30363D] relative">
+            <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
             <input
               type="text"
               placeholder="¿A dónde?"
               value={search}
               onChange={(e) => handleSearch(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && onSearchSubmit()}
-              className="bg-transparent w-full focus:outline-none text-[#0D1B2A] dark:text-white font-bold placeholder:text-gray-400 dark:placeholder:text-slate-600"
+              className="bg-transparent w-full outline-none text-white text-sm font-bold placeholder:text-[#484f58]"
             />
             {suggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 bg-white dark:bg-slate-800 shadow-2xl rounded-2xl mt-2 z-[1000] border border-gray-100 dark:border-slate-700 overflow-hidden">
-                {suggestions.map((s, idx) => (
-                  <div key={idx} onClick={() => {
-                    setSearch(s.display_name.split(',')[0]);
-                    setSuggestions([]);
-                    onNavigate('rutas', [parseFloat(s.lat), parseFloat(s.lon)]);
-                  }} className="p-4 hover:bg-green-50 dark:hover:bg-green-900/20 cursor-pointer border-b border-gray-50 dark:border-slate-700 last:border-none">
-                    <p className="font-bold text-sm text-[#0D1B2A] dark:text-white truncate">{s.display_name}</p>
+              <div className="absolute top-full left-0 right-0 bg-[#161B22] border border-[#30363D] shadow-2xl rounded-xl mt-1 z-[100] overflow-hidden">
+                {suggestions.map((s, i) => (
+                  <div key={i} onClick={() => { setSearch(s.display_name.split(',')[0]); setSuggestions([]); onNavigate('mapa', [parseFloat(s.lat), parseFloat(s.lon)], s.display_name.split(',')[0]); }} className="p-3 hover:bg-[#21262D] cursor-pointer border-b border-[#30363D] last:border-none">
+                    <p className="font-bold text-xs text-white truncate">{s.display_name}</p>
                   </div>
                 ))}
               </div>
             )}
           </div>
         </div>
-        <Button fullWidth onClick={onSearchSubmit}><Search size={22} strokeWidth={3} /> Buscar ruta</Button>
-      </Card>
+
+        <button onClick={() => { const tmp = from; setFrom(search); setSearch(tmp); }} className="absolute right-8 top-1/2 -translate-y-8 w-8 h-8 bg-[#21262D] border border-[#30363D] rounded-full flex items-center justify-center text-[#00C896] z-20">
+          <ArrowLeftRight size={14} className="rotate-90" />
+        </button>
+
+        <Button fullWidth onClick={() => onNavigate('mapa')} className="!py-3.5"><Search size={18} strokeWidth={3} /> Buscar ruta</Button>
+      </div>
 
       <div className="flex justify-between items-center px-2">
-        {[{ icon: <Navigation size={20} />, label: 'Trabajo' }, { icon: <Home size={20} />, label: 'Casa' }, { icon: <Heart size={20} />, label: 'Gym' }, { icon: <X size={20} className="rotate-45" />, label: 'Más' }].map((item, i) => (
-          <div key={i} className="flex flex-col items-center gap-2 group cursor-pointer" onClick={() => onNavigate('rutas')}>
-            <div className="w-14 h-14 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-lg border border-gray-100 dark:border-slate-700 group-hover:bg-[#00C896] group-hover:text-white transition-all text-[#1A1A2E] dark:text-white">{item.icon}</div>
-            <span className="text-[10px] font-black uppercase text-[#6B7280] dark:text-slate-500 tracking-widest">{item.label}</span>
+        {[{ icon: <Navigation size={18} />, label: 'Trabajo' }, { icon: <Home size={18} />, label: 'Casa' }, { icon: <Heart size={18} />, label: 'Gym' }].map((item, i) => (
+          <div key={i} className="flex flex-col items-center gap-2 cursor-pointer" onClick={() => onNavigate('mapa')}>
+            <div className="w-12 h-12 bg-[#161B22] border border-[#30363D] rounded-full flex items-center justify-center text-white">{item.icon}</div>
+            <span className="text-[9px] font-black uppercase text-[#8B949E] tracking-widest">{item.label}</span>
           </div>
         ))}
       </div>
 
-      <h2 className="text-xl font-black text-[#0D1B2A] dark:text-white tracking-tight">{getMensaje(user.name.split(' ')[0])}</h2>
-
-      <div className="bg-[#00C896]/10 p-3 rounded-2xl flex items-center gap-2 border border-[#00C896]/20">
-         <div className="w-8 h-8 bg-[#00C896] rounded-full flex items-center justify-center text-white shrink-0 shadow-lg shadow-green-500/20">
-            <CheckCircle2 size={14} />
-         </div>
-         <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-400">
-            Ahorraste {metricas.generarComparativaViral(stats.co2Total)} hoy.
+      <div className="bg-[#00C896]/5 p-4 rounded-2xl border border-[#00C896]/10">
+         <p className="text-xs font-bold text-[#00C896] leading-relaxed text-center">
+            Terminaste el día con 1.1kg menos de CO₂. ¡Bien! 🌱
          </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="text-center !p-4 bg-gradient-to-br from-[#1A1A2E] to-[#16213E] text-white overflow-hidden relative border-none" delay={200}>
-          <p className="text-2xl font-black text-[#00C896] z-10 relative"><CountUp end={stats.co2Total} decimals={1} /></p>
-          <p className="text-[9px] opacity-60 uppercase tracking-widest font-black mt-1 z-10 relative">KG CO₂</p>
-          <Leaf className="absolute -bottom-4 -right-4 text-[#00C896]/10 rotate-12 animate-float" size={60} />
-        </Card>
-        <Card className="text-center !p-4 bg-gradient-to-br from-[#1A1A2E] to-[#16213E] text-white overflow-hidden relative border-none" delay={300}>
-          <p className="text-2xl font-black text-[#FFD93D] z-10 relative"><CountUp end={stats.points} /></p>
-          <p className="text-[9px] opacity-60 uppercase tracking-widest font-black mt-1 z-10 relative">PTS</p>
-          <Star className="absolute -bottom-4 -right-4 text-white/5 rotate-12" size={60} />
-        </Card>
-        <Card className="text-center !p-4 bg-gradient-to-br from-[#1A1A2E] to-[#16213E] text-white overflow-hidden relative border-none" delay={400}>
-          <p className="text-2xl font-black text-blue-400 z-10 relative"><CountUp end={stats.kmTotal} decimals={1} /></p>
-          <p className="text-[9px] opacity-60 uppercase tracking-widest font-black mt-1 z-10 relative">KM</p>
-          <Navigation className="absolute -bottom-4 -right-4 text-white/5 rotate-12" size={60} />
-        </Card>
+      <div className="space-y-3">
+        <h3 className="text-xs font-black text-[#8B949E] uppercase tracking-widest flex items-center gap-2"><Wind size={14} /> Impacto de hoy</h3>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { v: '2.4', l: 'KG CO₂', c: 'text-[#00C896]' },
+            { v: '340', l: 'PTS', c: 'text-[#FFD93D]' },
+            { v: '12.5', l: 'KM', c: 'text-blue-400' }
+          ].map(m => (
+            <div key={m.l} className="bg-[#161B22] border border-[#30363D] p-3 rounded-2xl text-center">
+              <p className={`text-lg font-black ${m.c}`}>{m.v}</p>
+              <p className="text-[8px] font-black text-[#8B949E] mt-0.5">{m.l}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {alertaPrincipal && (
-        <div className={`p-4 rounded-2xl flex items-center gap-4 animate-pulse border
+        <div className={`p-4 rounded-2xl flex items-center gap-4 border
           ${alertaPrincipal.severity === 'error'
-            ? 'bg-[#FF6B6B]/10 dark:bg-red-900/20 border-[#FF6B6B]/20'
+            ? 'bg-[#FF6B6B]/10 border-[#FF6B6B]/20'
             : alertaPrincipal.severity === 'warning'
-            ? 'bg-yellow-500/10 dark:bg-yellow-900/20 border-yellow-500/20'
-            : 'bg-[#00C896]/10 dark:bg-green-900/20 border-[#00C896]/20'
+            ? 'bg-yellow-500/10 border-yellow-500/20'
+            : 'bg-[#00C896]/10 border-[#00C896]/20'
           }`}
         >
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0 shadow-lg
-            ${alertaPrincipal.severity === 'error' ? 'bg-[#FF6B6B] shadow-red-500/20'
-            : alertaPrincipal.severity === 'warning' ? 'bg-yellow-500 shadow-yellow-500/20'
-            : 'bg-[#00C896] shadow-green-500/20'}`}
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0
+            ${alertaPrincipal.severity === 'error' ? 'bg-[#FF6B6B]'
+            : alertaPrincipal.severity === 'warning' ? 'bg-yellow-500'
+            : 'bg-[#00C896]'}`}
           >
             <span className="text-lg">{alertaPrincipal.emoji}</span>
           </div>
           <div className="flex-1 min-w-0">
             <p className={`text-xs font-bold leading-tight
               ${alertaPrincipal.severity === 'error' ? 'text-[#FF6B6B]'
-              : alertaPrincipal.severity === 'warning' ? 'text-yellow-600 dark:text-yellow-400'
-              : 'text-emerald-700 dark:text-emerald-400'}`}
+              : alertaPrincipal.severity === 'warning' ? 'text-yellow-600'
+              : 'text-emerald-700'}`}
             >
-              {alertaPrincipal.calle && (
-                <span className="font-black">{alertaPrincipal.calle}: </span>
-              )}
+              {alertaPrincipal.calle && <span className="font-black">{alertaPrincipal.calle}: </span>}
               {alertaPrincipal.texto}
             </p>
-            {alertaPrincipal.delay && (
-              <p className="text-[9px] text-gray-400 font-bold mt-0.5">
-                Retraso estimado: {alertaPrincipal.delay} min
-              </p>
-            )}
           </div>
-          {alertasCargando && (
-            <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin shrink-0" />
-          )}
+          {alertasCargando && <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin shrink-0" />}
         </div>
       )}
-
-      {/* Banner Institucional BipBici (Monetización) */}
-      <div
-        onClick={() => trackEvent('Ad', 'click', 'bipbici_promo')}
-        className="relative p-6 rounded-3xl overflow-hidden cursor-pointer bg-gradient-to-r from-[#1A1A2E] to-[#16213E] text-white shadow-xl border border-[#00C896]/20"
-      >
-         <div className="relative z-10 flex items-center justify-between">
-            <div className="max-w-[70%]">
-               <span className="bg-[#00C896]/20 border border-[#00C896]/30 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest text-[#00C896]">Partner Movilidad</span>
-               <h3 className="text-lg font-black mt-1 leading-tight">BipBici + Ruta Verde</h3>
-               <p className="text-[10px] font-bold opacity-70 mt-1">Estaciones de bicicleta integradas en tu ruta sostenible.</p>
-            </div>
-            <div className="w-14 h-14 bg-[#00C896]/10 rounded-2xl flex items-center justify-center border border-[#00C896]/20">
-               <Bike size={28} className="text-[#00C896]" />
-            </div>
-         </div>
-         <div className="absolute top-0 right-0 w-32 h-32 bg-[#00C896]/5 rounded-full -translate-y-12 translate-x-12 blur-2xl"></div>
-      </div>
-
-      <div className="space-y-4">
-        <h2 className="text-xl font-black text-[#0D1B2A] dark:text-white tracking-tight">Rutas sugeridas para ti</h2>
-        <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 -mx-2 px-2">
-          {suggestedRoutes.map((r) => (
-            <div key={r.id} onClick={() => onNavigate('rutas')} className="min-w-[160px] bg-white dark:bg-slate-900 p-4 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-xl shadow-green-900/5 cursor-pointer hover:border-[#00C896] transition-all">
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-8 h-8 bg-gray-50 dark:bg-slate-800 rounded-lg flex items-center justify-center text-[#1A1A2E] dark:text-white">{r.mode}</div>
-                <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${r.color}`}>{r.co2}</span>
-              </div>
-              <p className="font-black text-xs text-[#0D1B2A] dark:text-white truncate">{r.name}</p>
-              <p className="text-[10px] text-gray-400 font-bold">{r.time}</p>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };
 
-const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
+const RoutePlannerComponent = ({ onStart, destination, destName, darkMode }) => {
   const [loading, setLoading] = useState(true);
+  const [osrmTime, setOsrmTime] = useState(30);
   const [coords, setCoords] = useState(destination);
 
   useEffect(() => {
     setCoords(destination);
+    if (destination) {
+      setLoading(true);
+      const fetchTime = async () => {
+        try {
+          const origin = [-33.4489, -70.6693];
+          const url = `https://router.project-osrm.org/route/v1/driving/${origin[1]},${origin[0]};${destination[1]},${destination[0]}?overview=false`;
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data.routes?.[0]) {
+            setOsrmTime(Math.round(data.routes[0].duration / 60));
+          } else {
+            setOsrmTime(30);
+          }
+        } catch {
+          setOsrmTime(30);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchTime();
+    } else {
+      setLoading(false);
+    }
   }, [destination]);
 
-  const [selected, setSelected] = useState('bici');
+  const [selected, setSelected] = useState('verde');
   const [filter, setFilter] = useState('greener');
   const [starting, setStarting] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 2000);
+    const timer = setTimeout(() => setLoading(false), 500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -1099,50 +1182,51 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
 
   const DIST_KM = 5.2; // distancia estimada de la ruta
 
-  const baseRoutes = MODOS.map(m => {
-    const co2 = parseFloat((m.co2Factor * DIST_KM).toFixed(3));
-    const co2Evitado = parseFloat((Math.max(0, 0.21 - m.co2Factor) * DIST_KM).toFixed(3));
-    const co2Level = Math.round((m.co2Factor / 0.21) * 100);
-    const tiempos = { caminata: 65, bici: 22, scooter: 18, metro: 40, micro: 45, moto: 20, uber: 25, auto: 28, compartido: 30 };
-    const pts = Math.floor(co2Evitado * 100 + DIST_KM * 10);
-    return {
-      id: m.id,
-      title: m.label.toUpperCase(),
-      sub: m.label,
-      medio: m.id,
-      distanciaKm: DIST_KM,
-      time: tiempos[m.id] || 35,
-      cost: m.costeFijo,
-      co2, co2Evitado, co2Level,
-      color: '',
-      colorHex: m.color,
-      emoji: m.emoji,
-      icon: <span style={{ fontSize: 18 }}>{m.emoji}</span>,
-      realTime: m.id === 'bici' ? `${BICI_STATIONS[0].disponibles} bicis libres` :
-                m.id === 'metro' ? 'Próximo en 3 min' :
-                m.id === 'uber' ? 'Conductor a 2 min' : 'Disponible ahora',
-      pts,
-      instrucciones: {
-        caminata: ["🚶 Sal por la puerta principal","🚶 Sigue derecho por Av. Providencia","🚶 Gira a la derecha en la próxima esquina","🏁 Has llegado a tu destino"],
-        bici: ["🚴 Retira BipBici en la estación más cercana","🚴 Toma la ciclovía de Av. Providencia hacia el oriente","🔒 Estaciona en la estación de destino","🚶 Camina 2 min — ¡llegaste!"],
-        scooter: ["🛴 Desbloquea el scooter con la app Grin/Lime","🛴 Sigue la ruta sugerida por la app","🛴 Estaciona en zona habilitada al llegar","✅ ¡Destino alcanzado!"],
-        metro: ["🚶 Dirígete a la estación Metro más cercana","🚇 Toma L1 → dirección Escuela Militar","🚇 Baja en la estación más cercana a tu destino","🚶 Camina 3 min hasta llegar"],
-        micro: ["🚌 Dirígete a la parada más cercana","🚌 Toma la micro 301 o D01 hacia tu destino","🔔 Baja en la parada indicada","🚶 Camina 5 min — ¡llegaste!"],
-        moto: ["🏍️ Prepara tu moto","🏍️ Sigue la ruta por Av. Vitacura","🏍️ Gira en la rotonda","🏁 Destino alcanzado"],
-        uber: ["📱 Solicita el Uber desde la app","📍 Espera en el punto indicado","🚗 El conductor llega en ~2 min","🏁 Viaje puerta a puerta"],
-        auto: ["🚗 Sal con tu vehículo","🚗 Toma Av. Providencia dirección oriente","🅿️ Busca estacionamiento al llegar","🏁 Has llegado"],
-        compartido: ["🤝 Confirma el viaje compartido","🚗 El conductor recoge a otro pasajero primero","🚗 Luego te lleva a tu destino","🏁 ¡Llegaste!"],
-      }[m.id] || ["🚀 En camino...","🏁 ¡Llegaste!"]
-    };
-  });
+  const surgicalRoutes = [
+    {
+      id: 'verde',
+      title: 'RUTA VERDE',
+      sub: 'Bici + Metro',
+      time: Math.round(osrmTime * 1.1),
+      cost: 800,
+      co2: 0.2,
+      pts: 150,
+      colorHex: '#00C896',
+      emoji: '🌿',
+      instrucciones: ["🚶 Camina a la estación BipBici","🚴 Pedalea hasta Metro Tobalaba","🚇 Toma L1 hacia Los Dominicos","🚶 Camina al destino"]
+    },
+    {
+      id: 'rapida',
+      title: 'RUTA RÁPIDA',
+      sub: 'Auto / Uber',
+      time: Math.round(osrmTime * 0.9),
+      cost: 1200,
+      co2: 0.8,
+      pts: 40,
+      colorHex: '#EF4444',
+      emoji: '⚡',
+      instrucciones: ["📍 Dirígete al vehículo","🚗 Sigue por la Costanera Norte","🏁 Destino alcanzado"]
+    },
+    {
+      id: 'activa',
+      title: 'RUTA ACTIVA',
+      sub: 'Caminata / Bici',
+      time: Math.round(osrmTime * 1.4),
+      cost: 0,
+      co2: 0,
+      pts: 250,
+      colorHex: '#3B82F6',
+      emoji: '💪',
+      instrucciones: ["🚶 Sal de tu ubicación","🚴 Toma la ciclovía Mapocho 42K","🏁 ¡Meta alcanzada!"]
+    }
+  ].map(r => ({
+    ...r,
+    distanciaKm: DIST_KM,
+    medio: r.id,
+    icon: <span style={{ fontSize: 18 }}>{r.emoji}</span>,
+  }));
 
-  const filteredRoutes = useMemo(() => {
-    const sorted = [...baseRoutes];
-    if (filter === 'faster') sorted.sort((a, b) => a.time - b.time);
-    if (filter === 'cheaper') sorted.sort((a, b) => a.cost - b.cost);
-    if (filter === 'greener') sorted.sort((a, b) => a.co2 - b.co2);
-    return sorted;
-  }, [filter, baseRoutes]);
+  const filteredRoutes = surgicalRoutes;
 
   const handleStartRoute = () => {
     setStarting(true);
@@ -1175,12 +1259,11 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
         <CityMap destination={coords} darkMode={darkMode} />
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-t-[48px] shadow-2xl p-6 z-10 space-y-4 -mt-12 relative pb-32 lg:pb-8 border-t border-gray-100 dark:border-slate-800">
-        <div className="w-16 h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full mx-auto -mt-2 mb-2"></div>
-        <div className="flex gap-2 overflow-x-auto no-scrollbar py-2">
-          {[{ id: 'greener', label: 'Más Verde' }, { id: 'faster', label: 'Más Rápido' }, { id: 'cheaper', label: 'Más Barato' }].map(f => (
-            <button key={f.id} onClick={() => setFilter(f.id)} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${filter === f.id ? 'bg-[#00C896] text-white shadow-lg shadow-green-200' : 'bg-gray-100 dark:bg-slate-800 text-[#6B7280] dark:text-slate-400'}`}>{f.label}</button>
-          ))}
+      <div className="bg-[#0D1117]/95 backdrop-blur-xl rounded-t-[48px] shadow-2xl p-6 z-10 space-y-4 -mt-12 relative pb-32 lg:pb-8 border-t border-white/10">
+        <div className="w-16 h-1.5 bg-white/10 rounded-full mx-auto -mt-2 mb-2"></div>
+        <div className="mb-2">
+          <p className="text-[10px] font-black text-[#00C896] uppercase tracking-[0.2em]">Rutas disponibles hacia</p>
+          <h2 className="text-xl font-black text-white truncate">{destName || 'Tu destino'}</h2>
         </div>
         <div className="space-y-3 max-h-[240px] overflow-y-auto no-scrollbar">
           {filteredRoutes.map((r, i) => (
@@ -1240,196 +1323,115 @@ const RoutePlannerComponent = ({ onStart, destination, darkMode }) => {
   );
 };
 
-const LiveMapComponent = ({ darkMode, onNavigateToRutas }) => {
-  const [layers, setLayers] = useState({ metro: true, bici: true, scooter: true });
-  const [showAlerts, setShowAlerts] = useState(false);
-  const [modoFiltro, setModoFiltro] = useState(null);
-  const [destSeleccionado, setDestSeleccionado] = useState(null);
-  const { alertas, cargando, ultimaActualizacion, refetch } = useTrafficAlerts();
-  const user = useMemo(() => storage.get('rv_user', { city: 'Santiago' }), []);
+const LiveMapScreen = ({ darkMode, onStartNavigation, userPos, onSetDest, onSetRoutePoints }) => {
+  const [mapQuery, setMapQuery] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [destination, setDestination] = useState(null);
+  const [routes, setRoutes] = useState([]);
+  const [selectedRoute, setSelectedRoute] = useState(null);
 
-  const MODOS_RAPIDOS = [
-    { id: 'bici', emoji: '🚴', label: 'Bici' },
-    { id: 'scooter', emoji: '🛴', label: 'Scooter' },
-    { id: 'metro', emoji: '🚇', label: 'Metro' },
-    { id: 'micro', emoji: '🚌', label: 'Micro' },
-  ];
+  const searchPlaces = async (query) => {
+    if (query.length < 3) { setSuggestions([]); return; }
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ' Santiago Chile')}&format=json&limit=5&countrycodes=cl`);
+    const data = await res.json();
+    setSuggestions(data.map(p => ({
+      nombre: p.display_name.split(',').slice(0,2).join(',').trim(),
+      lat: parseFloat(p.lat), lon: parseFloat(p.lon)
+    })));
+  };
 
-  // Contar alertas importantes para el badge
-  const alertasImportantes = alertas.filter(a => a.severity === 'error').length;
+  const selectDestination = async (s) => {
+    setDestination(s);
+    setSuggestions([]);
+    setMapQuery(s.nombre);
+    onSetDest([s.lat, s.lon], s.nombre);
 
-  const horaActualizacion = ultimaActualizacion
-    ? ultimaActualizacion.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })
-    : null;
+    // OSRM
+    try {
+      const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${userPos[1]},${userPos[0]};${s.lon},${s.lat}?overview=full&geometries=geojson`);
+      const data = await res.json();
+      if (data.routes && data.routes[0]) {
+        const mins = Math.round(data.routes[0].duration / 60);
+        const pts = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+        onSetRoutePoints(pts);
+
+        const routesGen = [
+          { id: 'verde', nombre: 'Ruta Verde', badge: 'RECOMENDADA', badgeColor: '#00C896', iconos: ['🚇', '🚶'], tiempo: Math.round(mins * 1.1), precio: '$800', co2: '0.2 kg', co2Color: '#00C896', descripcion: 'Metro + caminata · Mejor opción' },
+          { id: 'rapida', nombre: 'Ruta Rápida', badge: 'MÁS RÁPIDA', badgeColor: '#FFD93D', iconos: ['🚌', '🚇'], tiempo: Math.round(mins * 0.9), precio: '$1.200', co2: '0.8 kg', co2Color: '#FFD93D', descripcion: 'Bus + Metro · Más directo' },
+          { id: 'activa', nombre: 'Ruta Activa', badge: 'CERO EMISIONES', badgeColor: '#00D4FF', iconos: ['🚲'], tiempo: Math.round(mins * 1.4), precio: '$0', co2: '0 kg', co2Color: '#00D4FF', descripcion: 'Solo bicicleta · Sin emisiones' }
+        ];
+        setRoutes(routesGen);
+        setSelectedRoute(routesGen[0]);
+      }
+    } catch (e) { console.error(e); }
+  };
 
   return (
-    <div className="h-full -mx-5 -mt-8 flex flex-col relative overflow-hidden">
-      <div className="flex-grow relative h-full leaflet-container-wrapper">
-        <CityMap
-          showMetro={layers.metro || modoFiltro === 'metro'}
-          showBici={layers.bici || modoFiltro === 'bici'}
-          showScooter={layers.scooter || modoFiltro === 'scooter'}
-          city={user.city}
-          darkMode={darkMode}
-          alertasCoords={alertas.filter(a => a.lat && a.lon)}
-          modoTransporte={modoFiltro}
-          destination={destSeleccionado}
-          onSearchSelect={(coords, nombre) => {
-            setDestSeleccionado(coords);
-          }}
-        />
-        {destSeleccionado && (
-          <div className="absolute bottom-28 left-4 right-4 z-[1000]">
-            <button
-              onClick={() => { if (onNavigateToRutas) onNavigateToRutas(destSeleccionado); }}
-              className="w-full py-4 bg-[#00C896] text-white font-black text-sm rounded-2xl shadow-2xl flex items-center justify-center gap-2 active:scale-95 transition-all"
-            >
-              <Navigation size={18} /> Ver rutas hacia este destino
-            </button>
+    <div className="h-full relative pointer-events-auto">
+      {/* SEARCH INPUT — FIX #3 */}
+      <div className="absolute top-4 left-4 right-4 z-[600]">
+        <div style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: '12px' }} className="flex items-center gap-3 p-3 shadow-2xl">
+          <Search size={18} className="text-[#00C896]" />
+          <input
+            type="text" placeholder="¿A dónde vas?" value={mapQuery}
+            onChange={(e) => { setMapQuery(e.target.value); searchPlaces(e.target.value); }}
+            className="bg-transparent w-full outline-none text-white text-sm font-bold"
+          />
+          {mapQuery && <X size={18} className="text-[#8B949E]" onClick={() => { setMapQuery(''); setDestination(null); setRoutes([]); }} />}
+        </div>
+        {suggestions.length > 0 && (
+          <div style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: '0 0 12px 12px' }} className="mt-0.5 overflow-hidden shadow-2xl">
+            {suggestions.map((s, i) => (
+              <div key={i} onClick={() => selectDestination(s)} className="p-4 border-b border-[#30363D] text-[#F0F6FC] cursor-pointer text-sm font-bold flex items-center gap-3 active:bg-[#21262D]">
+                <MapPin size={14} className="text-[#00C896]" /> {s.nombre}
+              </div>
+            ))}
           </div>
         )}
-
-        {/* FILTROS DE MODO — debajo del buscador */}
-        <div className="absolute top-20 left-4 right-4 flex gap-2 z-[900] overflow-x-auto no-scrollbar">
-          {MODOS_RAPIDOS.map(m => (
-            <button
-              key={m.id}
-              onClick={() => setModoFiltro(prev => prev === m.id ? null : m.id)}
-              className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all border whitespace-nowrap flex items-center gap-1
-                ${modoFiltro === m.id
-                  ? 'bg-[#00C896] text-white border-[#00C896]'
-                  : 'bg-white/90 text-[#1A1A2E] border-gray-100 backdrop-blur-sm dark:bg-slate-800/90 dark:text-white dark:border-slate-700'
-                }`}
-            >
-              {m.emoji} {m.label}
-            </button>
-          ))}
-        </div>
-
-        {/* TOGGLE CAPAS */}
-        <div className="absolute top-6 left-4 right-4 flex gap-2 z-[1000] overflow-x-auto no-scrollbar">
-          {Object.entries(layers).map(([key, val]) => (
-            <button
-              key={key}
-              onClick={() => setLayers({ ...layers, [key]: !val })}
-              className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all border whitespace-nowrap
-                ${val
-                  ? 'bg-[#1A1A2E] text-white border-[#1A1A2E]'
-                  : 'bg-white text-[#1A1A2E] border-gray-100 dark:bg-slate-800 dark:text-white dark:border-slate-700'
-                }`}
-            >
-              {key}
-            </button>
-          ))}
-
-          {/* BOTÓN ALERTAS con badge de incidentes importantes */}
-          <button
-            onClick={() => setShowAlerts(!showAlerts)}
-            className="relative px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all border bg-red-500 text-white shrink-0"
-          >
-            {cargando ? '⏳' : '⚠️'} Alertas
-            {alertasImportantes > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white text-red-500 rounded-full text-[9px] font-black flex items-center justify-center border-2 border-red-500">
-                {alertasImportantes}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* BOTÓN CENTRAR */}
-        <button className="absolute bottom-24 right-4 z-[1000] w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-2xl border border-gray-100 dark:border-slate-700 text-[#00C896]">
-          <Locate size={22} />
-        </button>
-
-        {/* PANEL DE ALERTAS — slide desde la derecha */}
-        <div className={`absolute top-0 right-0 h-full w-[85%] max-w-xs bg-white dark:bg-slate-900 z-[2000] shadow-2xl transition-transform duration-400 ease-out border-l border-gray-100 dark:border-slate-800 flex flex-col
-          ${showAlerts ? 'translate-x-0' : 'translate-x-full'}`}
-        >
-          {/* Header del panel */}
-          <div className="flex justify-between items-center p-5 border-b border-gray-100 dark:border-slate-800 shrink-0">
-            <div>
-              <h3 className="font-black text-lg text-[#0D1B2A] dark:text-white">Alertas en vivo</h3>
-              {horaActualizacion && (
-                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
-                  Actualizado {horaActualizacion} · TomTom
-                </p>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={refetch}
-                className="w-8 h-8 bg-gray-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-gray-500 hover:text-[#00C896] transition-colors"
-                title="Actualizar"
-              >
-                <TrendingUp size={14} />
-              </button>
-              <button
-                onClick={() => setShowAlerts(false)}
-                className="w-8 h-8 bg-gray-100 dark:bg-slate-800 rounded-xl flex items-center justify-center"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          </div>
-
-          {/* Lista de alertas */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {cargando ? (
-              // Skeleton loader
-              Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="p-4 rounded-2xl bg-gray-50 dark:bg-slate-800 animate-pulse">
-                  <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded w-3/4 mb-2" />
-                  <div className="h-2 bg-gray-200 dark:bg-slate-700 rounded w-1/2" />
-                </div>
-              ))
-            ) : (
-              alertas.map((a) => (
-                <div
-                  key={a.id}
-                  className={`p-4 rounded-2xl border transition-all
-                    ${a.severity === 'error'
-                      ? 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800/30'
-                      : a.severity === 'warning'
-                      ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-100 dark:border-yellow-800/30'
-                      : 'bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-800/30'
-                    }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="text-xl shrink-0 mt-0.5">{a.emoji}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-[#0D1B2A] dark:text-white leading-snug truncate">
-                        {a.calle && <span className="text-[#00C896]">{a.calle}: </span>}
-                        {a.texto}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1.5">
-                        <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full
-                          ${a.status === 'Importante' ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400'
-                          : a.status === 'OK' ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400'
-                          : 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/40 dark:text-yellow-400'}`}
-                        >
-                          {a.status}
-                        </span>
-                        {a.delay && (
-                          <span className="text-[8px] font-bold text-gray-500">
-                            +{a.delay} min de retraso
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Footer con créditos */}
-          <div className="p-4 border-t border-gray-100 dark:border-slate-800 shrink-0">
-            <p className="text-[8px] font-bold text-gray-400 text-center uppercase tracking-widest">
-              Datos: TomTom Traffic™ · Se actualiza cada 2 min
-            </p>
-          </div>
-        </div>
       </div>
+
+      {/* BOTTOM SHEET — FIX #3 & #4 */}
+      {destination && routes.length > 0 && (
+        <div style={{ background: '#161B22', borderTop: '1px solid #30363D' }} className="fixed bottom-[60px] left-0 right-0 z-[800] rounded-t-[20px] p-5 max-h-[70vh] overflow-y-auto no-scrollbar animate-slide-up">
+          <div className="w-10 h-1 bg-[#30363D] rounded-full mx-auto mb-4" />
+          <h3 className="text-[#F0F6FC] text-base font-bold">Rutas disponibles</h3>
+          <p className="text-[#8B949E] text-xs mb-4">Hacia {destination.nombre}</p>
+
+          {/* NEARBY TRANSPORT — FIX #4 */}
+          <div className="mb-6">
+            <p className="text-[#8B949E] text-[10px] font-black uppercase tracking-widest mb-3">CERCA DE TI AHORA</p>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+              {[
+                { tipo: '🚇', nombre: 'Metro', info: 'Baquedano · 3 min', color: '#EF4444' },
+                { tipo: '🚌', nombre: 'Micro', info: 'Red 301 · 5 min', color: '#FFD93D' },
+                { tipo: '🚲', nombre: 'BipBici', info: '4 bicis · 200m', color: '#00D4FF' },
+                { tipo: '🛴', nombre: 'Scooter', info: 'Lime · 80m', color: '#FF8C42' }
+              ].map(t => (
+                <div key={t.nombre} style={{ background: '#21262D', border: `1px solid ${t.color}40` }} className="p-3 rounded-xl min-w-[90px] text-center shrink-0">
+                  <div className="text-xl mb-1">{t.tipo}</div>
+                  <div style={{ color: t.color }} className="text-[11px] font-bold">{t.nombre}</div>
+                  <div className="text-[9px] text-[#8B949E]">{t.info}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3 mb-4">
+            {routes.map(r => (
+              <RouteCard key={r.id} route={r} selected={selectedRoute?.id === r.id} onSelect={() => setSelectedRoute(r)} />
+            ))}
+          </div>
+
+          {selectedRoute && (
+            <button
+              onClick={() => onStartNavigation({ ...selectedRoute, destinoCoords: [destination.lat, destination.lon] })}
+              className="w-full h-14 rounded-2xl bg-gradient-to-r from-[#00C896] to-[#00A878] text-white font-black text-lg shadow-xl shadow-green-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            >
+              ▶ Iniciar {selectedRoute.nombre}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -1689,246 +1691,209 @@ const ProfileComponent = ({ user, stats, onLogout, darkMode, setDarkMode }) => {
   );
 };
 
-const NavegacionActivaScreen = ({ ruta, userPos, onFinalizar, onCancelar, darkMode }) => {
-  const [instruccionIdx, setInstruccionIdx] = useState(0);
-  const [tiempoRestante, setTiempoRestante] = useState(ruta.time);
-  const [distanciaRestante, setDistanciaRestante] = useState(ruta.distanciaKm);
-  const [posActual, setPosActual] = useState(userPos);
-  const [routePoints, setRoutePoints] = useState([]);
-  const [cargandoRuta, setCargandoRuta] = useState(true);
-  const [iniciado, setIniciado] = useState(Date.now());
+const NavegacionActivaScreen = ({
+  nav, ruta, userLocation, onCancelar
+}) => {
+  const [stepIdx, setStepIdx] = useState(0)
+  const [secs, setSecs] = useState(0)
+  const [co2, setCo2] = useState(0)
+  const [pts, setPts] = useState(0)
 
-  // 1. Obtener ruta real con OSRM (gratuito, sin API key)
   useEffect(() => {
-    const fetchRoute = async () => {
-      const origen = userPos;
-      const destino = ruta.destinoCoords || [userPos[0] + 0.025, userPos[1] + 0.032];
-      try {
-        const url = `https://router.project-osrm.org/route/v1/driving/${origen[1]},${origen[0]};${destino[1]},${destino[0]}?overview=full&geometries=geojson`;
-        const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
-        const data = await res.json();
-        if (data.routes?.[0]) {
-          const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-          setRoutePoints(coords);
-        } else {
-          setRoutePoints(buildFallbackRoute(origen, destino));
-        }
-      } catch {
-        setRoutePoints(buildFallbackRoute(origen, destino));
-      } finally {
-        setCargandoRuta(false);
-      }
-    };
-    fetchRoute();
-  }, []);
+    const t = setInterval(() => {
+      setSecs(s => s + 1)
+      setCo2(c => parseFloat(
+        (c + (ruta.id === 'activa' ? 0 : 0.003))
+        .toFixed(3)
+      ))
+      setPts(p => p + 1)
+    }, 1000)
+    return () => clearInterval(t)
+  }, [ruta])
 
-  // 2. GPS watchPosition — seguimiento real
-  useEffect(() => {
-    if (!navigator.geolocation) return;
-    const id = navigator.geolocation.watchPosition(
-      (pos) => setPosActual([pos.coords.latitude, pos.coords.longitude]),
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
-    );
-    return () => navigator.geolocation.clearWatch(id);
-  }, []);
+  const PASOS = [
+    { i:'↑', d:'150m', t:'Sal hacia Av. Providencia' },
+    { i:'→', d:'300m', t:'Gira derecha en Tobalaba' },
+    { i:'🚇', d:'80m', t:'Entra al Metro Tobalaba' },
+    { i:'🚇', d:'3 min', t:'L1 dirección San Pablo' },
+    { i:'↓', d:'200m', t:'Baja en Baquedano' },
+    { i:'↑', d:'300m', t:'Camina por Av. Italia' },
+    { i:'📍', d:'0m', t:'Has llegado 🎉' }
+  ]
 
-  // 3. Countdown tiempo y distancia (cada 30s)
-  useEffect(() => {
-    const iv = setInterval(() => {
-      setTiempoRestante(t => Math.max(0, t - 1));
-      setDistanciaRestante(d => Math.max(0, parseFloat((d - 0.05).toFixed(2))));
-    }, 30000);
-    return () => clearInterval(iv);
-  }, []);
-
-  // 4. Avanzar instrucciones automáticamente
-  useEffect(() => {
-    if (ruta.instrucciones.length <= 1) return;
-    const segPorPaso = (ruta.time * 60) / ruta.instrucciones.length;
-    const iv = setInterval(() => {
-      setInstruccionIdx(i => Math.min(i + 1, ruta.instrucciones.length - 1));
-    }, segPorPaso * 1000);
-    return () => clearInterval(iv);
-  }, [ruta]);
-
-  const esUltimoPaso = instruccionIdx === ruta.instrucciones.length - 1;
-  const progreso = Math.round(((ruta.distanciaKm - distanciaRestante) / ruta.distanciaKm) * 100);
-
-  const mapUrl = darkMode
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png';
-
-  const RecenterNav = ({ pos }) => {
-    const map = useMap();
-    useEffect(() => { map.setView(pos, 17, { animate: true }); }, [pos]);
-    return null;
-  };
-
-  const iconUsuarioNav = L.divIcon({
-    className: '',
-    html: `<div style="
-      width:20px;height:20px;
-      background:#3B82F6;
-      border:3px solid white;
-      border-radius:50%;
-      box-shadow:0 0 0 6px rgba(59,130,246,0.25);
-    "></div>`,
-    iconSize: [20, 20], iconAnchor: [10, 10]
-  });
+  const paso = PASOS[Math.min(stepIdx, PASOS.length-1)]
+  const next = PASOS[Math.min(stepIdx+1, PASOS.length-1)]
+  const minRest = Math.max(0,
+    ruta.tiempo - Math.floor(secs/60)
+  )
+  const progreso = Math.min(100,
+    (secs / (ruta.tiempo * 60)) * 100
+  )
 
   return (
-    <div className="fixed inset-0 z-[3000] flex flex-col bg-[#1A1A2E]">
+    <div style={{
+      position: 'fixed', inset: 0,
+      background: '#0D1117',
+      zIndex: 2000,
+      display: 'flex', flexDirection: 'column'
+    }}>
 
-      {/* BARRA SUPERIOR — instrucción actual */}
-      <div className="bg-[#1A1A2E] text-white px-5 pt-10 pb-4 z-10 shrink-0">
-        <div className="flex items-start gap-3 mb-3">
-          <div className="w-12 h-12 bg-[#00C896] rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-green-500/30">
-            <Navigation size={20} className="text-white" />
+      {/* BANNER SUPERIOR */}
+      <div style={{
+        background: '#161B22',
+        borderBottom: '1px solid #30363D',
+        padding: '16px 20px',
+        flexShrink: 0
+      }}>
+        <div style={{
+          display: 'flex', gap: '14px',
+          alignItems: 'center', marginBottom: '12px'
+        }}>
+          <div style={{
+            width: '56px', height: '56px',
+            background: '#00C896',
+            borderRadius: '16px',
+            display: 'flex', alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '28px', flexShrink: 0
+          }}>
+            {paso.i}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-widest text-[#00C896] mb-0.5">
-              Paso {instruccionIdx + 1} / {ruta.instrucciones.length}
-            </p>
-            <p className="font-black text-sm leading-snug text-white">
-              {ruta.instrucciones[instruccionIdx]}
-            </p>
+          <div style={{ flex: 1 }}>
+            <div style={{
+              color: '#8B949E', fontSize: '12px',
+              textTransform: 'uppercase',
+              marginBottom: '4px'
+            }}>
+              En {paso.d}
+            </div>
+            <div style={{
+              color: '#F0F6FC', fontSize: '18px',
+              fontWeight: '700', lineHeight: 1.2
+            }}>
+              {paso.t}
+            </div>
+          </div>
+        </div>
+
+        <div style={{
+          background: '#21262D',
+          borderRadius: '10px',
+          padding: '10px 14px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div style={{
+            color: '#8B949E', fontSize: '13px',
+            flex: 1, overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }}>
+            Luego: {next.i} {next.t}
           </div>
           <button
-            onClick={onCancelar}
-            className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center shrink-0 hover:bg-white/20 transition-all"
+            onClick={() => setStepIdx(i =>
+              Math.min(i+1, PASOS.length-1)
+            )}
+            style={{
+              background: '#30363D', border: 'none',
+              color: '#F0F6FC', padding: '6px 14px',
+              borderRadius: '8px', fontSize: '13px',
+              fontWeight: '600', cursor: 'pointer',
+              marginLeft: '10px', flexShrink: 0
+            }}
           >
-            <X size={18} className="text-white" />
+            Saltar ›
           </button>
         </div>
+      </div>
 
-        {/* Barra de progreso de pasos */}
-        <div className="flex gap-1">
-          {ruta.instrucciones.map((_, i) => (
-            <div
-              key={i}
-              className={`h-1 flex-1 rounded-full transition-all duration-700 ${
-                i < instruccionIdx ? 'bg-[#00C896]' :
-                i === instruccionIdx ? 'bg-white' : 'bg-white/20'
-              }`}
-            />
+      {/* MAPA NAVEGACIÓN */}
+      <div style={{ flex: 1, background: '#0D1117',
+        display: 'flex', alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          color: '#8B949E', textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '48px' }}>🗺️</div>
+          <div style={{ fontSize: '14px', marginTop: '8px' }}>
+            Navegando...
+          </div>
+        </div>
+      </div>
+
+      {/* PANEL INFERIOR */}
+      <div style={{
+        background: '#161B22',
+        borderTop: '1px solid #30363D',
+        padding: '16px 20px 32px',
+        flexShrink: 0
+      }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4,1fr)',
+          gap: '8px', marginBottom: '14px'
+        }}>
+          {[
+            { v: minRest+'min', l:'RESTANTE',
+              c:'#F0F6FC' },
+            { v: nav.distanciaTotal.toFixed(1)+'km',
+              l:'DISTANCIA', c:'#58A6FF' },
+            { v: co2.toFixed(2)+'kg',
+              l:'CO₂', c:'#FFD93D' },
+            { v: '+'+pts, l:'PUNTOS', c:'#00C896' }
+          ].map(m => (
+            <div key={m.l} style={{
+              background: '#21262D',
+              border: '1px solid #30363D',
+              borderRadius: '10px',
+              padding: '10px 4px',
+              textAlign: 'center'
+            }}>
+              <div style={{
+                fontWeight: '700', fontSize: '15px',
+                color: m.c
+              }}>{m.v}</div>
+              <div style={{
+                color: '#8B949E', fontSize: '10px',
+                marginTop: '2px'
+              }}>{m.l}</div>
+            </div>
           ))}
         </div>
-      </div>
 
-      {/* MAPA FULLSCREEN con la ruta dibujada */}
-      <div className="flex-1 relative min-h-0">
-        {cargandoRuta ? (
-          <div className="absolute inset-0 bg-slate-800 flex flex-col items-center justify-center gap-3">
-            <div className="w-10 h-10 border-4 border-[#00C896] border-t-transparent rounded-full animate-spin" />
-            <p className="text-white text-sm font-bold">Calculando tu ruta...</p>
-          </div>
-        ) : (
-          <MapContainer
-            center={posActual}
-            zoom={17}
-            scrollWheelZoom={false}
-            zoomControl={false}
-            className="w-full h-full"
-          >
-            <TileLayer url={mapUrl} attribution="© CARTO" />
-            <RecenterNav pos={posActual} />
-
-            {/* LÍNEA DE RUTA */}
-            {routePoints.length > 0 && (
-              <>
-                {/* Sombra de la línea */}
-                <Polyline positions={routePoints} color="#1A1A2E" weight={10} opacity={0.3} />
-                {/* Línea principal */}
-                <Polyline positions={routePoints} color="#00C896" weight={6} opacity={0.95} />
-              </>
-            )}
-
-            {/* POSICIÓN USUARIO */}
-            <Marker position={posActual} icon={iconUsuarioNav} />
-
-            {/* DESTINO */}
-            {routePoints.length > 0 && (
-              <Marker
-                position={routePoints[routePoints.length - 1]}
-                icon={customIcons.destination}
-              >
-                <Popup><p className="font-bold text-xs">Tu destino</p></Popup>
-              </Marker>
-            )}
-          </MapContainer>
-        )}
-
-        {/* Botón zoom in/out */}
-        <div className="absolute bottom-4 right-4 z-[1000] flex flex-col gap-2">
-          <button className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg text-[#1A1A2E] font-black text-lg">+</button>
-          <button className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg text-[#1A1A2E] font-black text-lg">−</button>
-        </div>
-      </div>
-
-      {/* PANEL INFERIOR — stats + botón finalizar */}
-      <div className="bg-white dark:bg-slate-900 rounded-t-[36px] px-5 pt-4 pb-8 shadow-2xl shrink-0">
-        <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
-
-        {/* Stats en vivo */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          <div className="bg-gray-50 dark:bg-slate-800 rounded-2xl p-3 text-center">
-            <p className="text-xl font-black text-[#1A1A2E] dark:text-white leading-none">{tiempoRestante}</p>
-            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">min rest.</p>
-          </div>
-          <div className="bg-gray-50 dark:bg-slate-800 rounded-2xl p-3 text-center">
-            <p className="text-xl font-black text-[#00C896] leading-none">{distanciaRestante.toFixed(1)}</p>
-            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">km rest.</p>
-          </div>
-          <div className="bg-gray-50 dark:bg-slate-800 rounded-2xl p-3 text-center">
-            <p className="text-xl font-black text-[#FFD93D] leading-none">+{ruta.puntosNuevos}</p>
-            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">pts</p>
-          </div>
+        <div style={{
+          height: '4px', background: '#30363D',
+          borderRadius: '2px', marginBottom: '14px',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            height: '100%', background: '#00C896',
+            width: progreso+'%',
+            transition: 'width 1s linear',
+            borderRadius: '2px'
+          }} />
         </div>
 
-        {/* Barra de progreso del viaje */}
-        <div className="mb-4">
-          <div className="flex justify-between text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
-            <span>Progreso</span>
-            <span>{progreso}%</span>
-          </div>
-          <div className="w-full h-2 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-[#00C896] to-emerald-400 rounded-full transition-all duration-1000"
-              style={{ width: `${Math.max(5, progreso)}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Info de ruta activa */}
-        <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/10 rounded-2xl border border-[#00C896]/20 mb-4">
-          <div className="w-8 h-8 bg-[#00C896] rounded-xl flex items-center justify-center shrink-0">
-            <Leaf size={14} className="text-white" fill="white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-black text-xs text-[#0D1B2A] dark:text-white">{ruta.title} · {ruta.sub}</p>
-            <p className="text-[9px] text-[#00C896] font-bold">
-              Ahorrando {ruta.co2Evitado.toFixed(2)} kg CO₂ vs auto 🌿
-            </p>
-          </div>
-        </div>
-
-        {/* BOTÓN FINALIZAR — solo el usuario lo activa */}
         <button
-          onClick={onFinalizar}
-          className={`w-full py-4 rounded-2xl font-black text-white text-sm flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl
-            ${esUltimoPaso
-              ? 'bg-gradient-to-r from-[#00C896] to-[#00A87E] shadow-green-500/30 animate-pulse'
-              : 'bg-[#1A1A2E]'
-            }`}
+          onClick={onCancelar}
+          style={{
+            width: '100%', padding: '14px',
+            background: 'transparent',
+            border: '2px solid #FF6B6B',
+            color: '#FF6B6B', borderRadius: '12px',
+            fontSize: '15px', fontWeight: '700',
+            cursor: 'pointer'
+          }}
         >
-          <CheckCircle2 size={20} />
-          {esUltimoPaso ? '¡Llegué! · Finalizar viaje 🎉' : 'Finalizar viaje anticipado'}
+          ✕ Cancelar viaje
         </button>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // Helper para ruta de fallback cuando OSRM no responde
 function buildFallbackRoute(origen, destino) {
@@ -1954,13 +1919,167 @@ export default function RutaVerde() {
   const [activeTab, setActiveTab] = useState('inicio');
   const [stats, setStats] = useState({ points: 0, co2Total: 0, kmTotal: 0, rutasCount: 0 });
   const [toast, setToast] = useState(null);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
   const [logoClicks, setLogoClicks] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
   const [redeeming, setRedeeming] = useState(null);
-  const [destCoords, setDestCoords] = useState(null);
+
+  const [userPoints, setUserPoints] = useState(() => {
+    try {
+      const saved = localStorage.getItem('rv_points')
+      return saved ? parseInt(saved) : 161
+    } catch { return 161 }
+  })
+
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [showRoutePanel, setShowRoutePanel] = useState(false)
+  const [rutas, setRutas] = useState([])
+  const [selectedRoute, setSelectedRoute] = useState(null)
+  const [loadingRoutes, setLoadingRoutes] = useState(false)
+  const [routeGeometry, setRouteGeometry] = useState(null)
+  const [routeDistance, setRouteDistance] = useState(null)
+  const [destinoNombre, setDestinoNombre] = useState('')
+  const [userLocation, setUserLocation] = useState(null)
+
   const [navegacionActiva, setNavegacionActiva] = useState(false);
   const [rutaActiva, setRutaActiva] = useState(null);
+  const [activeNavigation, setActiveNavigation] = useState(null)
+  const [medioSel, setMedioSel] = useState(null)
+
+  const mapRef = useRef(null)
+
+  useEffect(() => {
+    if (activeTab === 'mapa' && mapRef.current) {
+      setTimeout(() => {
+        mapRef.current.invalidateSize()
+      }, 100)
+    }
+  }, [activeTab])
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const loc = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+          }
+          setUserLocation(loc)
+          if (mapRef.current) {
+            mapRef.current.flyTo(
+              [loc.lat, loc.lng], 15,
+              { duration: 1.5 }
+            )
+          }
+        },
+        () => {
+          setUserLocation({ lat: -33.4489, lng: -70.6693 })
+        }
+      )
+    }
+  }, [])
+
+  useEffect(() => {
+    if (searchQuery.length < 3) {
+      setSearchResults([])
+      return
+    }
+    const timer = setTimeout(async () => {
+      setSearchLoading(true)
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?` +
+          `q=${encodeURIComponent(
+            searchQuery + ' Santiago Chile'
+          )}&format=json&limit=5&countrycodes=cl`,
+          { headers: { 'Accept-Language': 'es' } }
+        )
+        const data = await res.json()
+        setSearchResults(data.map(p => ({
+          nombre: p.display_name
+            .split(',').slice(0, 2).join(', ').trim(),
+          lat: parseFloat(p.lat),
+          lon: parseFloat(p.lon)
+        })))
+      } catch {
+        setSearchResults([])
+      }
+      setSearchLoading(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const selectDestino = (place) => {
+    setSearchQuery(place.nombre)
+    setSearchResults([])
+    setDestinoNombre(place.nombre)
+    setMedioSel(null)
+    mapRef.current?.flyTo([place.lat, place.lon], 14, { duration: 1.5 })
+    calcularRutas(place.lat, place.lon, place.nombre)
+  }
+
+  const selectMedio = (medio) => {
+    setMedioSel(medio.id)
+    setSelectedRoute(null) // deseleccionar ruta previa
+
+    // Reordenar: poner primero la ruta del medio elegido
+    const reordenadas = [...rutas].sort((a, b) => {
+      if (a.id === medio.rutaId) return -1
+      if (b.id === medio.rutaId) return 1
+      return 0
+    })
+    setRutas(reordenadas)
+  }
+
+  const calcularRutas = async (destLat, destLon, destNombre) => {
+    setLoadingRoutes(true)
+    let osrmMinutes = 30
+    try {
+      const origin = userLocation || { lat: -33.4489, lng: -70.6693 }
+      const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destLon},${destLat}?overview=full`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.routes?.[0]) {
+          osrmMinutes = Math.round(data.routes[0].duration / 60)
+          setRouteGeometry(data.routes[0].geometry)
+          setRouteDistance((data.routes[0].distance / 1000).toFixed(1))
+        }
+      }
+    } catch (err) { console.warn('OSRM falló, usando fallback:', err) }
+
+    const generated = [
+      { id: 'verde', nombre: 'Ruta Verde 🌿', destino: destNombre, badge: 'RECOMENDADA', badgeColor: '#00C896', iconos: ['🚇', '🚶'], tiempo: Math.round(osrmMinutes * 1.1), precio: '$800 CLP', co2: '0.2 kg', co2Color: '#00C896', descripcion: 'Metro + caminata' },
+      { id: 'rapida', nombre: 'Ruta Rápida ⚡', destino: destNombre, badge: 'MÁS RÁPIDA', badgeColor: '#FFD93D', iconos: ['🚌', '🚇'], tiempo: Math.round(osrmMinutes * 0.85), precio: '$1.200 CLP', co2: '0.8 kg', co2Color: '#FFD93D', descripcion: 'Bus expreso + Metro' },
+      { id: 'activa', nombre: 'Ruta Activa 🚲', destino: destNombre, badge: '0 EMISIONES', badgeColor: '#00D4FF', iconos: ['🚲'], tiempo: Math.round(osrmMinutes * 1.35), precio: '$0', co2: '0 kg', co2Color: '#00D4FF', descripcion: 'Solo bicicleta' }
+    ]
+    setRutas(generated)
+    setLoadingRoutes(false)
+    setShowRoutePanel(true)
+  }
+
+  const centerOnUser = () => {
+    if (userLocation && mapRef.current) {
+      mapRef.current.flyTo([userLocation.lat, userLocation.lng], 15, { duration: 1.5 })
+    } else if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setUserLocation(loc)
+        mapRef.current?.flyTo([loc.lat, loc.lng], 15, { duration: 1.5 })
+      })
+    }
+  }
+
+  const startNavigation = (ruta) => {
+    setActiveNavigation({
+      ruta,
+      startTime: Date.now(),
+      distanciaTotal: parseFloat(routeDistance) || 5.0
+    })
+    setShowRoutePanel(false)
+  }
+
   const { pos: userPos } = useGeolocalizacion();
 
   // Alertas de tráfico en tiempo real
@@ -1972,7 +2091,7 @@ export default function RutaVerde() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    const timer = setTimeout(() => setLoading(false), 2000);
+    const timer = setTimeout(() => setLoading(false), 500);
     const savedUser = storage.get('rv_user');
     const savedStats = storage.get('rv_stats');
     if (savedStats) setStats(savedStats);
@@ -1996,14 +2115,16 @@ export default function RutaVerde() {
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
-  const handleStartRoute = (rutaSeleccionada) => {
-    if (!rutaSeleccionada) return;
-    const co2Evitado = parseFloat(metricas.calcularCO2Evitado(rutaSeleccionada.distanciaKm, rutaSeleccionada.medio).toFixed(3));
-    const puntosNuevos = metricas.calcularPuntos(co2Evitado, rutaSeleccionada.distanciaKm);
-    setRutaActiva({ ...rutaSeleccionada, co2Evitado, puntosNuevos, destinoCoords: destCoords });
+  const handleStartNavigation = (route) => {
+    setRutaActiva({
+      ...route,
+      time: route.tiempo,
+      pts: 150,
+      medio: route.id,
+      instrucciones: ["🚶 Camina al paradero", "🚇 Toma el metro", "🏁 ¡Llegaste!"],
+      distanciaKm: 4.2
+    });
     setNavegacionActiva(true);
-    setActiveTab('mapa');
-    showToast(`🗺️ Navegando: ${rutaSeleccionada.title}`);
   };
 
   const handleFinalizarViaje = () => {
@@ -2031,10 +2152,14 @@ export default function RutaVerde() {
     setActiveTab('rutas');
   };
 
-  const handleNavigate = (tab, coords = null) => {
+  const handleNavigate = (tab, coords = null, name = '') => {
     setActiveTab(tab);
     if (coords) setDestCoords(coords);
-    else if (tab !== 'rutas') setDestCoords(null);
+    if (name) setDestName(name);
+    else if (tab !== 'rutas') {
+      setDestCoords(null);
+      setDestName('');
+    }
   };
 
   const handleLogoClick = () => {
@@ -2060,7 +2185,7 @@ export default function RutaVerde() {
   const handleLogout = () => { storage.clear(); window.location.reload(); };
 
   if (loading) return (
-    <div className="fixed inset-0 bg-[#1A1A2E] flex flex-col items-center justify-center p-10 z-[1000] text-white">
+    <div className="fixed inset-0 bg-[#0D1117] flex flex-col items-center justify-center p-10 z-[1000] text-white">
       <Leaf size={64} className="text-[#00C896] animate-bounce" />
       <h1 className="mt-12 text-5xl font-black tracking-tighter text-center uppercase">RUTA <span className="text-[#00C896]">VERDE</span></h1>
       <p className="mt-4 text-[#00C896] font-black uppercase text-[10px] tracking-[0.5em] animate-pulse">Muévete mejor. Contamina menos.</p>
@@ -2122,16 +2247,23 @@ export default function RutaVerde() {
 
   return (
     <ErrorBoundary>
-      {navegacionActiva && rutaActiva && (
+      {activeNavigation && (
         <NavegacionActivaScreen
-          ruta={rutaActiva}
-          userPos={userPos}
-          onFinalizar={handleFinalizarViaje}
-          onCancelar={handleCancelarNavegacion}
-          darkMode={darkMode}
+          nav={activeNavigation}
+          ruta={activeNavigation.ruta}
+          userLocation={userLocation}
+          onCancelar={() => {
+            setActiveNavigation(null)
+            setActiveTab('mapa')
+          }}
+          onSaltar={() => {}}
         />
       )}
-      <div className={`min-h-screen bg-[#F0FFF8] dark:bg-slate-950 text-[#1A1A2E] dark:text-white font-['Inter'] selection:bg-[#00C896] selection:text-white transition-colors duration-500`}>
+      <div className={`min-h-screen bg-[#0D1117] text-[#F0F6FC] font-['Inter'] selection:bg-[#00C896] selection:text-white transition-colors duration-500 overflow-hidden`}>
+
+        {/* Fondo base siempre presente — FIX #1 */}
+        <div style={{ position: 'fixed', inset: 0, background: '#0D1117', zIndex: 0 }} />
+
         {!isOnline && (
           <div className="fixed top-0 left-0 right-0 z-[10000] bg-red-500 text-white text-[10px] font-black uppercase tracking-[0.2em] py-2 text-center animate-slide-down">
             Estás en modo offline. Algunas funciones pueden no estar disponibles.
@@ -2139,7 +2271,7 @@ export default function RutaVerde() {
         )}
         {showConfetti && <ConfettiEffect onComplete={() => setShowConfetti(false)} />}
         {toast && (
-          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[5000] w-[90%] max-w-sm bg-[#1A1A2E] dark:bg-slate-800 text-white px-8 py-5 rounded-[32px] shadow-2xl flex items-center gap-4 animate-slide-up border-b-8 border-[#00C896]">
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[5000] w-[90%] max-w-sm bg-[#1A1A2E] text-white px-8 py-5 rounded-[32px] shadow-2xl flex items-center gap-4 animate-slide-up border-b-8 border-[#00C896]">
             <CheckCircle2 size={24} className="text-[#00C896] shrink-0" />
             <p className="font-black text-sm">{toast}</p>
           </div>
@@ -2147,59 +2279,465 @@ export default function RutaVerde() {
 
         {redeeming && (
           <div className="fixed inset-0 z-[4000] bg-black/60 backdrop-blur-sm flex items-end justify-center animate-fade-in">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-t-[48px] p-8 pb-32 space-y-6 animate-slide-up shadow-[0_-20px_50px_rgba(0,0,0,0.3)] border-t border-white/10">
-              <div className="w-16 h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full mx-auto mb-2"></div>
+            <div className="bg-[#0D1117] w-full max-w-lg rounded-t-[48px] p-8 pb-32 space-y-6 animate-slide-up shadow-[0_-20px_50px_rgba(0,0,0,0.3)] border-t border-[#30363D]">
+              <div className="w-16 h-1.5 bg-[#30363D] rounded-full mx-auto mb-2"></div>
               <div className="text-center space-y-2">
-                  <h3 className="text-2xl font-black text-[#0D1B2A] dark:text-white">¿Canjear beneficio?</h3>
-                  <p className="text-gray-500 dark:text-slate-400 font-bold">Se descontarán {redeeming.cost} puntos de tu cuenta.</p>
+                  <h3 className="text-2xl font-black text-white">¿Canjear beneficio?</h3>
+                  <p className="text-gray-400 font-bold">Se descontarán {redeeming.cost} puntos de tu cuenta.</p>
               </div>
-              <div className="bg-gray-50 dark:bg-slate-800 rounded-3xl p-10 flex flex-col items-center gap-4 border border-gray-100 dark:border-slate-700">
-                  <div className="w-40 h-40 bg-white dark:bg-slate-900 p-4 rounded-3xl shadow-inner flex items-center justify-center">
-                    <QrCode size={120} className="text-[#1A1A2E] dark:text-white" />
+              <div className="bg-[#161B22] rounded-3xl p-10 flex flex-col items-center gap-4 border border-[#30363D]">
+                  <div className="w-40 h-40 bg-[#21262D] p-4 rounded-3xl shadow-inner flex items-center justify-center">
+                    <QrCode size={120} className="text-white" />
                   </div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Escanea en caja después de confirmar</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Escanea en caja después de confirmar</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                  <Button variant="ghost" onClick={() => setRedeeming(null)} className="py-5">Cancelar</Button>
+                  <Button variant="ghost" onClick={() => setRedeeming(null)} className="py-5 text-gray-400">Cancelar</Button>
                   <Button onClick={confirmRedeem} className="py-5">Confirmar</Button>
               </div>
             </div>
           </div>
         )}
 
-        <div className="max-w-7xl mx-auto flex h-screen overflow-hidden">
-          <div className="w-full lg:w-[480px] bg-white dark:bg-slate-900 h-screen overflow-y-auto no-scrollbar shadow-2xl relative lg:border-x border-gray-100 dark:border-slate-800 flex flex-col z-50">
-            <main className="flex-grow p-6 pt-10">
-              <div className="flex items-center gap-2 mb-8 cursor-pointer select-none active:scale-95 transition-transform" onClick={handleLogoClick}>
-                <div className="w-10 h-10 bg-[#00C896] rounded-xl flex items-center justify-center text-white"><Leaf size={20} fill="currentColor" /></div>
-                <span className="font-black text-xl tracking-tighter text-[#0D1B2A] dark:text-white uppercase">RUTA <span className="text-[#00C896]">VERDE</span></span>
+        <div className="max-w-7xl mx-auto flex h-screen overflow-hidden relative">
+
+          {/* MAP CONTAINER CON VISIBILIDAD CONTROLADA — FIX #1 & #3 & #4 & #6 & #7 */}
+          <div style={{
+            position: 'fixed',
+            top: '56px', left: 0, right: 0, bottom: '60px',
+            zIndex: 1,
+            display: activeTab === 'mapa' ? 'block' : 'none'
+          }}>
+            <MapContainer
+              ref={mapRef}
+              center={[-33.4489, -70.6693]}
+              zoom={13}
+              style={{ height: '100%', width: '100%' }}
+              zoomControl={false}
+            >
+              <TileLayer
+                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              />
+
+              {/* METRO — líneas reales */}
+              {METRO_LINES.map(line => (
+                <Polyline key={line.name} positions={line.coords} color={line.color} weight={6} opacity={0.6} />
+              ))}
+
+              {/* BICIS — estaciones reales BipBici */}
+              {BICI_STATIONS.map(s => (
+                <Marker key={s.id} position={s.pos} icon={L.divIcon({ html: `<div style="background:#3B82F6;border:2px solid white;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;box-shadow:0 2px 4px rgba(0,0,0,0.3);">🚴</div>`, iconSize: [18, 18], iconAnchor: [9, 9], className: '' })}>
+                  <Popup><div style={{ background: '#161B22', color: '#F0F6FC', padding: '10px', borderRadius: '8px' }}><p style={{ fontWeight: 700, fontSize: '13px' }}>{s.name}</p><p style={{ color: '#00C896', fontSize: '11px' }}>{s.disponibles} bicis libres</p></div></Popup>
+                </Marker>
+              ))}
+
+              {/* Markers de alertas — FIX #6 */}
+              {alertas.filter(a => a.lat && a.lon).map(alerta => (
+                <Marker
+                  key={alerta.id}
+                  position={[alerta.lat, alerta.lon]}
+                  icon={L.divIcon({
+                    html: `<div style="font-size:20px; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));">${alerta.emoji}</div>`,
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14],
+                    className: ''
+                  })}
+                >
+                  <Popup>
+                    <div style={{ background: '#161B22', color: '#F0F6FC', padding: '10px', borderRadius: '8px', fontSize: '13px', minWidth: '160px' }}>
+                      <div style={{ fontWeight: '700', marginBottom: '4px', color: alerta.severity === 'error' ? '#FF6B6B' : '#FFD93D' }}>{alerta.emoji} {alerta.label}</div>
+                      <div style={{ color: '#8B949E' }}>{alerta.texto}</div>
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
+
+              {/* Botón centrar — FIX #4 */}
+              <button
+                onClick={(e) => { e.stopPropagation(); centerOnUser(); }}
+                style={{
+                  position: 'absolute',
+                  bottom: '80px', right: '16px',
+                  width: '48px', height: '48px',
+                  background: '#161B22',
+                  border: '1px solid #30363D',
+                  borderRadius: '12px',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer', zIndex: 500,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
+                }}
+              >
+                🎯
+              </button>
+
+              {/* INPUT de búsqueda en el mapa — FIX #7 */}
+              <div style={{ position: 'absolute', top: '12px', left: '12px', right: '12px', zIndex: 600 }}>
+                <div style={{ position: 'relative' }}>
+                  <div style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: searchResults.length > 0 ? '12px 12px 0 0' : '12px', padding: '12px 16px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '16px' }}>🔍</span>
+                    <input
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      placeholder="¿A dónde vas?"
+                      style={{ background: 'none', border: 'none', outline: 'none', color: '#F0F6FC', fontSize: '16px', flex: 1 }}
+                    />
+                    {searchQuery && (
+                      <button onClick={() => { setSearchQuery(''); setSearchResults([]); setShowRoutePanel(false); setRutas([]); }} style={{ background: 'none', border: 'none', color: '#8B949E', cursor: 'pointer', fontSize: '18px', padding: '0' }}>✕</button>
+                    )}
+                  </div>
+                  {searchResults.length > 0 && (
+                    <div style={{ background: '#161B22', border: '1px solid #30363D', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden', zIndex: 700 }}>
+                      {searchLoading ? (
+                        <div style={{ padding: '12px 16px', color: '#8B949E', fontSize: '13px', textAlign: 'center' }}>Buscando...</div>
+                      ) : (
+                        searchResults.map((r, i) => (
+                          <div key={i} onClick={() => selectDestino(r)} style={{ padding: '12px 16px', borderTop: i > 0 ? '1px solid #21262D' : 'none', color: '#F0F6FC', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '16px' }}>📍</span>
+                            <span>{r.nombre}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <Suspense fallback={<div className="flex items-center justify-center h-full"><Skeleton className="w-full h-64" /></div>}>
-                {activeTab === 'inicio' && (
-                  <HomeScreen
-                    user={user}
-                    onNavigate={handleNavigate}
-                    stats={stats}
-                    darkMode={darkMode}
-                    alertas={alertas}
-                    alertasCargando={alertasCargando}
-                  />
-                )}
-                {activeTab === 'rutas' && (
-                  <RoutePlanner
-                    onStart={handleStartRoute}
-                    destination={destCoords}
-                    darkMode={darkMode}
-                  />
-                )}
-                {activeTab === 'mapa' && <LiveMapScreen darkMode={darkMode} onNavigateToRutas={(coords) => { setDestCoords(coords); setActiveTab('rutas'); }} />}
-                {activeTab === 'puntos' && <GamificationScreen points={stats.points} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} co2Total={stats.co2Total} />}
-                {activeTab === 'perfil' && <ProfileScreen user={user} stats={stats} onLogout={handleLogout} darkMode={darkMode} setDarkMode={setDarkMode} />}
-              </Suspense>
-            </main>
+              {/* Panel de alertas horizontal — FIX #6 */}
+              {!showRoutePanel && (
+                <div style={{ position: 'absolute', top: '72px', left: '12px', right: '12px', zIndex: 500 }}>
+                  <div style={{ overflowX: 'auto', display: 'flex', gap: '8px', paddingBottom: '4px' }} className="no-scrollbar">
+                    {ALERTAS_TRAFICO.map(a => (
+                      <div key={a.id} onClick={() => { mapRef.current?.flyTo([a.lat, a.lng], 16, { duration: 1 }) }} style={{ background: '#161B22', border: `1px solid ${a.color}50`, borderRadius: '20px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: '14px' }}>{a.icon}</span>
+                        <span style={{ color: '#F0F6FC', fontSize: '12px', fontWeight: '500' }}>{a.titulo}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-            <nav className="fixed lg:absolute bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border-t border-gray-100 dark:border-slate-800 px-8 py-6 flex justify-between items-center z-[200] lg:rounded-t-[40px] shadow-2xl">
+              {/* Bottom sheet de rutas — FIX #5 & #7 */}
+              {showRoutePanel && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  background: '#161B22',
+                  borderRadius: '20px 20px 0 0',
+                  border: '1px solid #30363D',
+                  borderBottom: 'none',
+                  zIndex: 600,
+                  maxHeight: '78vh',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden'
+                }}>
+                  {/* PARTE A — Header fijo */}
+                  <div style={{
+                    padding: '16px 16px 0',
+                    flexShrink: 0
+                  }}>
+                    {/* Handle bar */}
+                    <div style={{
+                      width: '40px', height: '4px',
+                      background: '#30363D', borderRadius: '2px',
+                      margin: '0 auto 16px'
+                    }} />
+
+                    {/* Título + X */}
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between',
+                      alignItems: 'flex-start', marginBottom: '6px'
+                    }}>
+                      <div>
+                        <div style={{
+                          color: '#F0F6FC', fontWeight: '700',
+                          fontSize: '16px'
+                        }}>
+                          Rutas disponibles
+                        </div>
+                        <div style={{
+                          color: '#8B949E', fontSize: '13px',
+                          marginTop: '2px'
+                        }}>
+                          Hacia {destinoNombre.split(',')[0]}
+                          {routeDistance && ` · ${routeDistance} km`}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowRoutePanel(false)
+                          setSearchQuery('')
+                          setRutas([])
+                          setMedioSel(null)
+                          setSelectedRoute(null)
+                        }}
+                        style={{
+                          background: '#21262D',
+                          border: '1px solid #30363D',
+                          color: '#8B949E', width: '32px',
+                          height: '32px', borderRadius: '8px',
+                          cursor: 'pointer', fontSize: '16px'
+                        }}
+                      >✕</button>
+                    </div>
+
+                    {/* Chips de transporte */}
+                    <div style={{
+                      display: 'flex', gap: '8px',
+                      overflowX: 'auto', padding: '12px 0',
+                      borderBottom: '1px solid #30363D',
+                      marginBottom: '4px'
+                    }} className="no-scrollbar">
+                      {MEDIOS.map(medio => (
+                        <div
+                          key={medio.id}
+                          onClick={() => selectMedio(medio)}
+                          style={{
+                            background: medioSel === medio.id
+                              ? medio.c + '25' : '#21262D',
+                            border: `2px solid ${
+                              medioSel === medio.id
+                                ? medio.c : medio.c + '40'
+                            }`,
+                            borderRadius: '12px',
+                            padding: '10px 14px',
+                            flexShrink: 0,
+                            textAlign: 'center',
+                            minWidth: '76px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            transform: medioSel === medio.id
+                              ? 'scale(1.05)' : 'scale(1)'
+                          }}
+                        >
+                          <div style={{ fontSize: '22px' }}>{medio.i}</div>
+                          <div style={{
+                            color: medioSel === medio.id
+                              ? medio.c : '#8B949E',
+                            fontSize: '12px', fontWeight: '600',
+                            marginTop: '4px'
+                          }}>{medio.n}</div>
+                          <div style={{
+                            color: '#8B949E', fontSize: '11px'
+                          }}>{medio.d}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {medioSel && (
+                      <div style={{
+                        color: '#8B949E', fontSize: '13px',
+                        textAlign: 'center', padding: '8px 0'
+                      }}>
+                        Mostrando rutas con{' '}
+                        <span style={{
+                          color: '#F0F6FC', fontWeight: '600'
+                        }}>
+                          {MEDIOS.find(m => m.id === medioSel)?.n}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* PARTE B — Rutas scrolleables */}
+                  <div style={{
+                    flex: 1,
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    padding: '8px 16px 24px',
+                    WebkitOverflowScrolling: 'touch'
+                  }} className="no-scrollbar">
+                    {/* Spinner de carga */}
+                    {loadingRoutes && (
+                      <div style={{
+                        textAlign: 'center', padding: '24px',
+                        color: '#8B949E', fontSize: '14px',
+                        display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', gap: '10px'
+                      }}>
+                        <div style={{
+                          width: '20px', height: '20px',
+                          border: '2px solid #30363D',
+                          borderTop: '2px solid #00C896',
+                          borderRadius: '50%',
+                          animation: 'spin 1s linear infinite'
+                        }} />
+                        Calculando rutas...
+                      </div>
+                    )}
+
+                    {/* Las 3 route cards */}
+                    {!loadingRoutes && rutas.map(ruta => (
+                      <div
+                        key={ruta.id}
+                        onClick={() => setSelectedRoute(ruta)}
+                        style={{
+                          background: selectedRoute?.id === ruta.id
+                            ? '#00C89612' : '#21262D',
+                          border: `2px solid ${
+                            selectedRoute?.id === ruta.id
+                              ? ruta.badgeColor : '#30363D'
+                          }`,
+                          borderRadius: '14px', padding: '14px',
+                          marginBottom: '10px', cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          marginBottom: '10px'
+                        }}>
+                          <div>
+                            <div style={{
+                              fontWeight: '600', color: '#F0F6FC',
+                              fontSize: '15px'
+                            }}>
+                              {ruta.nombre}
+                            </div>
+                            <div style={{
+                              color: '#8B949E', fontSize: '12px',
+                              marginTop: '2px'
+                            }}>
+                              {ruta.descripcion}
+                            </div>
+                          </div>
+                          <span style={{
+                            background: ruta.badgeColor + '20',
+                            color: ruta.badgeColor,
+                            border: `1px solid ${ruta.badgeColor}50`,
+                            borderRadius: '20px',
+                            padding: '3px 10px',
+                            fontSize: '10px', fontWeight: '700',
+                            height: 'fit-content', whiteSpace: 'nowrap'
+                          }}>
+                            {ruta.badge}
+                          </span>
+                        </div>
+
+                        <div style={{
+                          display: 'flex', gap: '4px',
+                          marginBottom: '10px'
+                        }}>
+                          {ruta.iconos.map((ic, i) => (
+                            <span key={i} style={{ fontSize: '20px' }}>
+                              {ic}
+                            </span>
+                          ))}
+                        </div>
+
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1fr 1fr',
+                          gap: '4px'
+                        }}>
+                          {[
+                            { v: ruta.tiempo + ' min',
+                              l: 'TIEMPO', c: '#F0F6FC' },
+                            { v: ruta.precio,
+                              l: 'PRECIO', c: '#F0F6FC' },
+                            { v: ruta.co2 + ' CO₂',
+                              l: 'EMISIONES', c: ruta.co2Color }
+                          ].map(m => (
+                            <div key={m.l} style={{ textAlign: 'center' }}>
+                              <div style={{
+                                fontWeight: '700', color: m.c,
+                                fontSize: '15px'
+                              }}>{m.v}</div>
+                              <div style={{
+                                color: '#8B949E', fontSize: '10px'
+                              }}>{m.l}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {selectedRoute?.id === ruta.id && (
+                          <div style={{
+                            marginTop: '10px', textAlign: 'center',
+                            color: ruta.badgeColor, fontSize: '13px',
+                            fontWeight: '600'
+                          }}>
+                            ✓ Seleccionada — toca Iniciar abajo
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* ── BOTÓN INICIAR ── */}
+                    {selectedRoute && !loadingRoutes && (
+                      <button
+                        onClick={() => startNavigation(selectedRoute)}
+                        style={{
+                          width: '100%',
+                          background: 'linear-gradient(135deg, #00C896, #00A878)',
+                          border: 'none', color: 'white',
+                          borderRadius: '14px', padding: '18px',
+                          fontSize: '17px', fontWeight: '700',
+                          cursor: 'pointer',
+                          display: 'flex', alignItems: 'center',
+                          justifyContent: 'center', gap: '10px',
+                          marginTop: '4px',
+                          boxShadow: '0 4px 20px rgba(0,200,150,0.3)'
+                        }}
+                      >
+                        ▶ Iniciar {selectedRoute.nombre.split(' ').slice(0,2).join(' ')}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </MapContainer>
+          </div>
+
+          <div style={{
+            position: 'fixed',
+            top: '56px', left: 0, right: 0, bottom: '60px',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            background: '#0D1117',
+            WebkitOverflowScrolling: 'touch',
+            zIndex: 10,
+            display: activeTab === 'mapa' ? 'none' : 'block'
+          }}>
+          <div className="w-full lg:w-[480px] h-screen shadow-2xl relative lg:border-x border-[#30363D] flex flex-col z-[20] pointer-events-none">
+            {/* Header: position fixed, height 56px */}
+            <header className="fixed top-0 left-0 right-0 h-[56px] bg-[#0D1117] flex items-center justify-between px-6 z-[1000] border-b border-[#30363D] pointer-events-auto">
+              <div className="flex items-center gap-2 cursor-pointer select-none active:scale-95 transition-transform" onClick={handleLogoClick}>
+                <div className="w-8 h-8 bg-[#00C896] rounded-lg flex items-center justify-center text-white"><Leaf size={16} fill="currentColor" /></div>
+                <span className="font-black text-lg tracking-tighter text-white uppercase">RUTA <span className="text-[#00C896]">VERDE</span></span>
+              </div>
+              <button className="relative w-10 h-10 bg-[#161B22] rounded-xl flex items-center justify-center border border-[#30363D] transition-transform active:scale-95">
+                <Bell size={20} className="text-white" />
+                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#FF6B6B] rounded-full border-2 border-[#0D1117]"></span>
+              </button>
+            </header>
+
+            <div className="pointer-events-none h-full">
+              <Suspense fallback={<div className="flex items-center justify-center h-full"><Skeleton className="w-full h-64" /></div>}>
+                {activeTab === 'inicio' && <div className="pointer-events-auto"><HomeComponent user={user} onNavigate={handleNavigate} stats={stats} alertas={alertas} alertasCargando={alertasCargando} /></div>}
+                {activeTab === 'rutas' && (
+                  <div className="p-6 text-center animate-fade-in pointer-events-auto pt-24">
+                    <div className="w-20 h-20 bg-[#161B22] border border-[#30363D] rounded-3xl flex items-center justify-center mx-auto mb-6 text-[#00C896]"><Milestone size={40} /></div>
+                    <h2 className="text-2xl font-black text-white mb-2">Tus rutas guardadas</h2>
+                    <p className="text-[#8B949E] font-bold">Aquí aparecerán tus destinos frecuentes.</p>
+                  </div>
+                )}
+                {activeTab === 'puntos' && <div className="pointer-events-auto"><GamificationScreen points={userPoints} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} co2Total={stats.co2Total} /></div>}
+                {activeTab === 'perfil' && (
+                  <div className="pointer-events-auto">
+                    <PerfilErrorBoundary>
+                      <ProfileScreen user={user} stats={stats} onLogout={handleLogout} darkMode={darkMode} setDarkMode={setDarkMode} />
+                    </PerfilErrorBoundary>
+                  </div>
+                )}
+              </Suspense>
+            </div>
+
+            <nav className="fixed bottom-0 left-0 right-0 h-[60px] bg-[#0D1117] border-t border-white/5 px-8 flex justify-between items-center z-[1000] pointer-events-auto">
               {[
                 { id: 'inicio', icon: <Home />, label: 'Inicio' },
                 { id: 'rutas', icon: <Milestone />, label: 'Rutas' },
@@ -2208,8 +2746,8 @@ export default function RutaVerde() {
                 { id: 'perfil', icon: <User />, label: 'Perfil' },
               ].map(tab => (
                 <button key={tab.id} onClick={() => handleNavigate(tab.id)} className={`flex flex-col items-center gap-1.5 transition-all duration-300 relative ${activeTab === tab.id ? 'text-[#00C896] -translate-y-2' : 'text-gray-300 dark:text-slate-600 hover:text-gray-500'}`}>
-                  <div className={`p-2.5 rounded-2xl transition-all duration-500 ${activeTab === tab.id ? 'bg-green-50 dark:bg-green-900/10 shadow-lg' : 'bg-transparent'}`}>
-                    {React.cloneElement(tab.icon, { size: 24, strokeWidth: activeTab === tab.id ? 3 : 2 })}
+                  <div className={`p-2 rounded-xl transition-all duration-500 ${activeTab === tab.id ? 'bg-[#00C896]/10 shadow-lg' : 'bg-transparent'}`}>
+                    {React.cloneElement(tab.icon, { size: 22, strokeWidth: activeTab === tab.id ? 3 : 2 })}
                     {tab.id === 'mapa' && navegacionActiva && (
                       <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#00C896] rounded-full animate-ping" />
                     )}
@@ -2219,6 +2757,7 @@ export default function RutaVerde() {
                 </button>
               ))}
             </nav>
+          </div>
           </div>
 
           <div className="hidden lg:block flex-grow bg-[#F0FFF8] dark:bg-slate-950 p-10 overflow-hidden relative">

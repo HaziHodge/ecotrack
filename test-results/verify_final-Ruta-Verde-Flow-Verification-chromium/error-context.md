@@ -1,0 +1,187 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - generic [ref=e6]:
+    - generic [ref=e8]:
+      - img [ref=e9]
+      - textbox "¿A dónde vas?" [ref=e12]: Costanera Center
+      - button [ref=e13] [cursor=pointer]:
+        - img [ref=e14]
+    - button [ref=e17] [cursor=pointer]:
+      - img [ref=e18]
+    - generic [ref=e20]:
+      - generic:
+        - generic:
+          - img
+        - generic:
+          - button "🚴" [ref=e25] [cursor=pointer]:
+            - generic [ref=e26]: 🚴
+          - button "🚴" [ref=e27] [cursor=pointer]:
+            - generic [ref=e28]: 🚴
+          - button "🚴" [ref=e29] [cursor=pointer]:
+            - generic [ref=e30]: 🚴
+          - button "🚴" [ref=e31] [cursor=pointer]:
+            - generic [ref=e32]: 🚴
+          - button "🚴" [ref=e33] [cursor=pointer]:
+            - generic [ref=e34]: 🚴
+          - button "🚴" [ref=e35] [cursor=pointer]:
+            - generic [ref=e36]: 🚴
+          - button "🚴" [ref=e37] [cursor=pointer]:
+            - generic [ref=e38]: 🚴
+          - button "🚴" [ref=e39] [cursor=pointer]:
+            - generic [ref=e40]: 🚴
+          - button "🚴" [ref=e41] [cursor=pointer]:
+            - generic [ref=e42]: 🚴
+          - button "🚴" [ref=e43] [cursor=pointer]:
+            - generic [ref=e44]: 🚴
+          - button "🛴" [ref=e45] [cursor=pointer]:
+            - generic [ref=e46]: 🛴
+          - button "🛴" [ref=e47] [cursor=pointer]:
+            - generic [ref=e48]: 🛴
+          - button "🛴" [ref=e49] [cursor=pointer]:
+            - generic [ref=e50]: 🛴
+          - button "🛴" [ref=e51] [cursor=pointer]:
+            - generic [ref=e52]: 🛴
+          - button "🛴" [ref=e53] [cursor=pointer]:
+            - generic [ref=e54]: 🛴
+          - button "🛴" [ref=e55] [cursor=pointer]:
+            - generic [ref=e56]: 🛴
+          - button "🛴" [ref=e57] [cursor=pointer]:
+            - generic [ref=e58]: 🛴
+          - button "🛴" [ref=e59] [cursor=pointer]:
+            - generic [ref=e60]: 🛴
+          - button [ref=e61] [cursor=pointer]
+          - button "~" [ref=e63] [cursor=pointer]:
+            - generic [ref=e64]: ~
+          - button "⚠" [ref=e65] [cursor=pointer]:
+            - generic [ref=e66]: ⚠
+  - generic:
+    - banner [ref=e67]:
+      - generic [ref=e68] [cursor=pointer]:
+        - img [ref=e70]
+        - generic [ref=e73]: RUTA VERDE
+    - main:
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic [ref=e75]:
+                - img [ref=e76]
+                - textbox "¿A dónde vas?" [ref=e79]
+              - button [ref=e80] [cursor=pointer]:
+                - img [ref=e81]
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                  - generic:
+                    - button "🚴" [ref=e83] [cursor=pointer]:
+                      - generic [ref=e84]: 🚴
+                    - button "🚴" [ref=e85] [cursor=pointer]:
+                      - generic [ref=e86]: 🚴
+                    - button "🚴" [ref=e87] [cursor=pointer]:
+                      - generic [ref=e88]: 🚴
+                    - button "🚴" [ref=e89] [cursor=pointer]:
+                      - generic [ref=e90]: 🚴
+                    - button "🚴" [ref=e91] [cursor=pointer]:
+                      - generic [ref=e92]: 🚴
+                    - button "🚴" [ref=e93] [cursor=pointer]:
+                      - generic [ref=e94]: 🚴
+                    - button "🚴" [ref=e95] [cursor=pointer]:
+                      - generic [ref=e96]: 🚴
+                    - button "🚴" [ref=e97] [cursor=pointer]:
+                      - generic [ref=e98]: 🚴
+                    - button "🚴" [ref=e99] [cursor=pointer]:
+                      - generic [ref=e100]: 🚴
+                    - button "🚴" [ref=e101] [cursor=pointer]:
+                      - generic [ref=e102]: 🚴
+                    - button "🛴" [ref=e103] [cursor=pointer]:
+                      - generic [ref=e104]: 🛴
+                    - button "🛴" [ref=e105] [cursor=pointer]:
+                      - generic [ref=e106]: 🛴
+                    - button "🛴" [ref=e107] [cursor=pointer]:
+                      - generic [ref=e108]: 🛴
+                    - button "🛴" [ref=e109] [cursor=pointer]:
+                      - generic [ref=e110]: 🛴
+                    - button "🛴" [ref=e111] [cursor=pointer]:
+                      - generic [ref=e112]: 🛴
+                    - button "🛴" [ref=e113] [cursor=pointer]:
+                      - generic [ref=e114]: 🛴
+                    - button "🛴" [ref=e115] [cursor=pointer]:
+                      - generic [ref=e116]: 🛴
+                    - button "🛴" [ref=e117] [cursor=pointer]:
+                      - generic [ref=e118]: 🛴
+                    - button [ref=e119] [cursor=pointer]
+                    - button "~" [ref=e121] [cursor=pointer]:
+                      - generic [ref=e122]: ~
+                    - button "⚠" [ref=e123] [cursor=pointer]:
+                      - generic [ref=e124]: ⚠
+            - generic [ref=e125]:
+              - button "🚴 Bici" [ref=e126] [cursor=pointer]
+              - button "🛴 Scooter" [ref=e127] [cursor=pointer]
+              - button "🚇 Metro" [ref=e128] [cursor=pointer]
+              - button "🚌 Micro" [ref=e129] [cursor=pointer]
+            - generic [ref=e130]:
+              - button "metro" [ref=e131] [cursor=pointer]
+              - button "bici" [ref=e132] [cursor=pointer]
+              - button "scooter" [ref=e133] [cursor=pointer]
+              - button "⚠️ Alertas 1" [ref=e134] [cursor=pointer]:
+                - text: ⚠️ Alertas
+                - generic [ref=e135]: "1"
+            - button [ref=e136] [cursor=pointer]:
+              - img [ref=e137]
+            - generic:
+              - generic [ref=e139]:
+                - generic [ref=e140]:
+                  - heading "Alertas en vivo" [level=3] [ref=e141]
+                  - paragraph [ref=e142]: Actualizado 12:32 a. m. · TomTom
+                - generic [ref=e143]:
+                  - button "Actualizar" [ref=e144] [cursor=pointer]:
+                    - img [ref=e145]
+                  - button [ref=e148] [cursor=pointer]:
+                    - img [ref=e149]
+              - generic [ref=e152]:
+                - generic [ref=e154]:
+                  - generic [ref=e155]: 🚦
+                  - generic [ref=e156]:
+                    - paragraph [ref=e157]:
+                      - generic [ref=e158]: "Alameda:"
+                      - text: Tráfico denso en Av. Libertador Bernardo O'Higgins
+                    - generic [ref=e159]:
+                      - generic [ref=e160]: Retraso
+                      - generic [ref=e161]: +8 min de retraso
+                - generic [ref=e163]:
+                  - generic [ref=e164]: ✅
+                  - generic [ref=e165]:
+                    - paragraph [ref=e166]:
+                      - generic [ref=e167]: "Línea 1:"
+                      - text: Metro L1 operando con normalidad
+                    - generic [ref=e169]: OK
+                - generic [ref=e171]:
+                  - generic [ref=e172]: 🚧
+                  - generic [ref=e173]:
+                    - paragraph [ref=e174]:
+                      - generic [ref=e175]: "Av. Providencia:"
+                      - text: Obras viales en Av. Providencia con Pedro de Valdivia
+                    - generic [ref=e176]:
+                      - generic [ref=e177]: Importante
+                      - generic [ref=e178]: +12 min de retraso
+              - paragraph [ref=e180]: "Datos: TomTom Traffic™ · Se actualiza cada 2 min"
+    - navigation [ref=e181]:
+      - button "Inicio" [ref=e182] [cursor=pointer]:
+        - img [ref=e184]
+        - generic [ref=e187]: Inicio
+      - button "Rutas" [ref=e188] [cursor=pointer]:
+        - img [ref=e190]
+        - generic [ref=e192]: Rutas
+      - button "Mapa" [ref=e193] [cursor=pointer]:
+        - img [ref=e195]
+        - generic [ref=e198]: Mapa
+      - button "Puntos" [ref=e199] [cursor=pointer]:
+        - img [ref=e201]
+        - generic [ref=e204]: Puntos
+      - button "Perfil" [ref=e205] [cursor=pointer]:
+        - img [ref=e207]
+        - generic [ref=e210]: Perfil
+```
