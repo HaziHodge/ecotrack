@@ -18,6 +18,44 @@ import {
   Eye, Trophy
 } from 'lucide-react';
 
+const ALERTAS_TRAFICO = [
+  {
+    id: 'a1', tipo: 'obras',
+    lat: -33.4372, lng: -70.6506,
+    titulo: 'Obras viales',
+    descripcion: 'Av. Providencia cortada parcialmente',
+    color: '#FF6B6B', icon: '🚧', severidad: 'alta'
+  },
+  {
+    id: 'a2', tipo: 'accidente',
+    lat: -33.4200, lng: -70.6080,
+    titulo: 'Accidente',
+    descripcion: 'Colisión en Costanera Norte km 3',
+    color: '#FF8C42', icon: '⚠️', severidad: 'media'
+  },
+  {
+    id: 'a3', tipo: 'congestion',
+    lat: -33.4569, lng: -70.6483,
+    titulo: 'Congestión alta',
+    descripcion: 'Diagonal Paraguay - lento',
+    color: '#FFD93D', icon: '🚗', severidad: 'media'
+  },
+  {
+    id: 'a4', tipo: 'corte',
+    lat: -33.4380, lng: -70.6830,
+    titulo: 'Corte de calle',
+    descripcion: 'Av. Santa Rosa - desvío activo',
+    color: '#FF6B6B', icon: '🚫', severidad: 'alta'
+  },
+  {
+    id: 'a5', tipo: 'metro',
+    lat: -33.4689, lng: -70.6320,
+    titulo: 'Metro en mantención',
+    descripcion: 'L4 con frecuencia reducida',
+    color: '#58A6FF', icon: '🚇', severidad: 'baja'
+  }
+]
+
 // --- LOCAL UI COMPONENTS ---
 
 class PerfilErrorBoundary extends React.Component {
