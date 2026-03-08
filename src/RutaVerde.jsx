@@ -20,6 +20,87 @@ import {
 
 // --- LOCAL UI COMPONENTS ---
 
+class PerfilErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          padding: '40px 20px',
+          textAlign: 'center',
+          background: '#0D1117',
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '16px'
+        }}>
+          <div style={{ fontSize: '48px' }}>👤</div>
+          <div style={{
+            color: '#F0F6FC',
+            fontSize: '18px',
+            fontWeight: '700'
+          }}>
+            Hazi
+          </div>
+          <div style={{ color: '#8B949E', fontSize: '14px' }}>
+            BROTE VERDE · Santiago
+          </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '12px', width: '100%',
+            maxWidth: '320px', marginTop: '8px'
+          }}>
+            {[
+              { v: '1.1kg', l: 'CO₂ AHORRADO', c: '#00C896' },
+              { v: '1', l: 'VIAJES PÚBLICOS', c: '#58A6FF' },
+              { v: '5.2km', l: 'DISTANCIA BICI', c: '#FFD93D' },
+              { v: '$1.200', l: 'DINERO AHORRADO', c: '#00C896' }
+            ].map(m => (
+              <div key={m.l} style={{
+                background: '#161B22',
+                border: '1px solid #30363D',
+                borderRadius: '14px', padding: '16px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  fontSize: '20px', fontWeight: '700',
+                  color: m.c
+                }}>{m.v}</div>
+                <div style={{
+                  color: '#8B949E', fontSize: '11px',
+                  marginTop: '4px'
+                }}>{m.l}</div>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => this.setState({ hasError: false })}
+            style={{
+              background: '#00C896', border: 'none',
+              color: 'white', padding: '12px 24px',
+              borderRadius: '12px', cursor: 'pointer',
+              fontSize: '15px', fontWeight: '600',
+              marginTop: '16px'
+            }}
+          >
+            Recargar perfil
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 const Input = ({ className = "", ...props }) => (
   <input
     className={`w-full p-4 bg-slate-900/50 border border-white/10 rounded-2xl outline-none focus:border-[#00C896] transition-all text-white placeholder:text-slate-500 ${className}`}
@@ -881,9 +962,9 @@ const HomeComponent = ({ user, onNavigate, stats, alertas, alertasCargando }) =>
     || alertas?.[0];
 
   return (
-    <div className="space-y-6 px-6 py-6 animate-fade-in relative z-10">
+    <div style={{ padding: '20px', paddingBottom: '24px', minHeight: '100%' }} className="space-y-6 animate-fade-in relative z-10">
       <div className="space-y-1">
-        <h1 className="text-2xl font-black text-white leading-tight">Hola, {user.name.split(' ')[0]} 👋</h1>
+        <h1 className="text-2xl font-black text-white leading-tight">Hola, {user?.name?.split(' ')[0] || 'Viajero'} 👋</h1>
         <div className="flex items-center gap-2">
           <p className="text-[#8B949E] text-xs font-bold flex items-center gap-1"><MapPin size={12} className="text-[#00C896]" /> {user.city}, Chile</p>
           <span className="bg-[#00C896]/10 text-[#00C896] text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">{usuariosSimulados} activos</span>
@@ -1839,11 +1920,138 @@ export default function RutaVerde() {
   const [logoClicks, setLogoClicks] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
   const [redeeming, setRedeeming] = useState(null);
-  const [destCoords, setDestCoords] = useState(null);
-  const [destName, setDestName] = useState('');
+
+  const [userPoints, setUserPoints] = useState(() => {
+    try {
+      const saved = localStorage.getItem('rv_points')
+      return saved ? parseInt(saved) : 161
+    } catch { return 161 }
+  })
+
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [showRoutePanel, setShowRoutePanel] = useState(false)
+  const [rutas, setRutas] = useState([])
+  const [selectedRoute, setSelectedRoute] = useState(null)
+  const [loadingRoutes, setLoadingRoutes] = useState(false)
+  const [routeGeometry, setRouteGeometry] = useState(null)
+  const [routeDistance, setRouteDistance] = useState(null)
+  const [destinoNombre, setDestinoNombre] = useState('')
+  const [userLocation, setUserLocation] = useState(null)
+
   const [navegacionActiva, setNavegacionActiva] = useState(false);
   const [rutaActiva, setRutaActiva] = useState(null);
-  const [currentRoutePoints, setCurrentRoutePoints] = useState([]);
+
+  const mapRef = useRef(null)
+
+  useEffect(() => {
+    if (activeTab === 'mapa' && mapRef.current) {
+      setTimeout(() => {
+        mapRef.current.invalidateSize()
+      }, 100)
+    }
+  }, [activeTab])
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const loc = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+          }
+          setUserLocation(loc)
+          if (mapRef.current) {
+            mapRef.current.flyTo(
+              [loc.lat, loc.lng], 15,
+              { duration: 1.5 }
+            )
+          }
+        },
+        () => {
+          setUserLocation({ lat: -33.4489, lng: -70.6693 })
+        }
+      )
+    }
+  }, [])
+
+  useEffect(() => {
+    if (searchQuery.length < 3) {
+      setSearchResults([])
+      return
+    }
+    const timer = setTimeout(async () => {
+      setSearchLoading(true)
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?` +
+          `q=${encodeURIComponent(
+            searchQuery + ' Santiago Chile'
+          )}&format=json&limit=5&countrycodes=cl`,
+          { headers: { 'Accept-Language': 'es' } }
+        )
+        const data = await res.json()
+        setSearchResults(data.map(p => ({
+          nombre: p.display_name
+            .split(',').slice(0, 2).join(', ').trim(),
+          lat: parseFloat(p.lat),
+          lon: parseFloat(p.lon)
+        })))
+      } catch {
+        setSearchResults([])
+      }
+      setSearchLoading(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const selectDestino = (place) => {
+    setSearchQuery(place.nombre)
+    setSearchResults([])
+    setDestinoNombre(place.nombre)
+    mapRef.current?.flyTo([place.lat, place.lon], 14, { duration: 1.5 })
+    calcularRutas(place.lat, place.lon, place.nombre)
+  }
+
+  const calcularRutas = async (destLat, destLon, destNombre) => {
+    setLoadingRoutes(true)
+    let osrmMinutes = 30
+    try {
+      const origin = userLocation || { lat: -33.4489, lng: -70.6693 }
+      const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destLon},${destLat}?overview=full`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.routes?.[0]) {
+          osrmMinutes = Math.round(data.routes[0].duration / 60)
+          setRouteGeometry(data.routes[0].geometry)
+          setRouteDistance((data.routes[0].distance / 1000).toFixed(1))
+        }
+      }
+    } catch (err) { console.warn('OSRM falló, usando fallback:', err) }
+
+    const generated = [
+      { id: 'verde', nombre: 'Ruta Verde 🌿', destino: destNombre, badge: 'RECOMENDADA', badgeColor: '#00C896', iconos: ['🚇', '🚶'], tiempo: Math.round(osrmMinutes * 1.1), precio: '$800 CLP', co2: '0.2 kg', co2Color: '#00C896', descripcion: 'Metro + caminata' },
+      { id: 'rapida', nombre: 'Ruta Rápida ⚡', destino: destNombre, badge: 'MÁS RÁPIDA', badgeColor: '#FFD93D', iconos: ['🚌', '🚇'], tiempo: Math.round(osrmMinutes * 0.85), precio: '$1.200 CLP', co2: '0.8 kg', co2Color: '#FFD93D', descripcion: 'Bus expreso + Metro' },
+      { id: 'activa', nombre: 'Ruta Activa 🚲', destino: destNombre, badge: '0 EMISIONES', badgeColor: '#00D4FF', iconos: ['🚲'], tiempo: Math.round(osrmMinutes * 1.35), precio: '$0', co2: '0 kg', co2Color: '#00D4FF', descripcion: 'Solo bicicleta' }
+    ]
+    setRutas(generated)
+    setLoadingRoutes(false)
+    setShowRoutePanel(true)
+  }
+
+  const centerOnUser = () => {
+    if (userLocation && mapRef.current) {
+      mapRef.current.flyTo([userLocation.lat, userLocation.lng], 15, { duration: 1.5 })
+    } else if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setUserLocation(loc)
+        mapRef.current?.flyTo([loc.lat, loc.lng], 15, { duration: 1.5 })
+      })
+    }
+  }
+
   const { pos: userPos } = useGeolocalizacion();
 
   // Alertas de tráfico en tiempo real
@@ -2062,23 +2270,199 @@ export default function RutaVerde() {
 
         <div className="max-w-7xl mx-auto flex h-screen overflow-hidden relative">
 
-          {/* MAP CONTAINER CON VISIBILIDAD CONTROLADA — FIX #1 */}
+          {/* MAP CONTAINER CON VISIBILIDAD CONTROLADA — FIX #1 & #3 & #4 & #6 & #7 */}
           <div style={{
             position: 'fixed',
             top: '56px', left: 0, right: 0, bottom: '60px',
             zIndex: 1,
             display: activeTab === 'mapa' ? 'block' : 'none'
           }}>
-             <CityMap
-               city={user.city}
-               darkMode={true}
-               alertasCoords={alertas.filter(a => a.lat && a.lon)}
-               destination={destCoords}
-               routePreview={currentRoutePoints}
-             />
+            <MapContainer
+              ref={mapRef}
+              center={[-33.4489, -70.6693]}
+              zoom={13}
+              style={{ height: '100%', width: '100%' }}
+              zoomControl={false}
+            >
+              <TileLayer
+                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              />
+
+              {/* METRO — líneas reales */}
+              {METRO_LINES.map(line => (
+                <Polyline key={line.name} positions={line.coords} color={line.color} weight={6} opacity={0.6} />
+              ))}
+
+              {/* BICIS — estaciones reales BipBici */}
+              {BICI_STATIONS.map(s => (
+                <Marker key={s.id} position={s.pos} icon={L.divIcon({ html: `<div style="background:#3B82F6;border:2px solid white;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;box-shadow:0 2px 4px rgba(0,0,0,0.3);">🚴</div>`, iconSize: [18, 18], iconAnchor: [9, 9], className: '' })}>
+                  <Popup><div style={{ background: '#161B22', color: '#F0F6FC', padding: '10px', borderRadius: '8px' }}><p style={{ fontWeight: 700, fontSize: '13px' }}>{s.name}</p><p style={{ color: '#00C896', fontSize: '11px' }}>{s.disponibles} bicis libres</p></div></Popup>
+                </Marker>
+              ))}
+
+              {/* Markers de alertas — FIX #6 */}
+              {alertas.filter(a => a.lat && a.lon).map(alerta => (
+                <Marker
+                  key={alerta.id}
+                  position={[alerta.lat, alerta.lon]}
+                  icon={L.divIcon({
+                    html: `<div style="font-size:20px; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.8));">${alerta.emoji}</div>`,
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14],
+                    className: ''
+                  })}
+                >
+                  <Popup>
+                    <div style={{ background: '#161B22', color: '#F0F6FC', padding: '10px', borderRadius: '8px', fontSize: '13px', minWidth: '160px' }}>
+                      <div style={{ fontWeight: '700', marginBottom: '4px', color: alerta.severity === 'error' ? '#FF6B6B' : '#FFD93D' }}>{alerta.emoji} {alerta.label}</div>
+                      <div style={{ color: '#8B949E' }}>{alerta.texto}</div>
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
+
+              {/* Botón centrar — FIX #4 */}
+              <button
+                onClick={(e) => { e.stopPropagation(); centerOnUser(); }}
+                style={{
+                  position: 'absolute',
+                  bottom: '80px', right: '16px',
+                  width: '48px', height: '48px',
+                  background: '#161B22',
+                  border: '1px solid #30363D',
+                  borderRadius: '12px',
+                  display: 'flex', alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer', zIndex: 500,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
+                }}
+              >
+                🎯
+              </button>
+
+              {/* INPUT de búsqueda en el mapa — FIX #7 */}
+              <div style={{ position: 'absolute', top: '12px', left: '12px', right: '12px', zIndex: 600 }}>
+                <div style={{ position: 'relative' }}>
+                  <div style={{ background: '#161B22', border: '1px solid #30363D', borderRadius: searchResults.length > 0 ? '12px 12px 0 0' : '12px', padding: '12px 16px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '16px' }}>🔍</span>
+                    <input
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      placeholder="¿A dónde vas?"
+                      style={{ background: 'none', border: 'none', outline: 'none', color: '#F0F6FC', fontSize: '16px', flex: 1 }}
+                    />
+                    {searchQuery && (
+                      <button onClick={() => { setSearchQuery(''); setSearchResults([]); setShowRoutePanel(false); setRutas([]); }} style={{ background: 'none', border: 'none', color: '#8B949E', cursor: 'pointer', fontSize: '18px', padding: '0' }}>✕</button>
+                    )}
+                  </div>
+                  {searchResults.length > 0 && (
+                    <div style={{ background: '#161B22', border: '1px solid #30363D', borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden', zIndex: 700 }}>
+                      {searchLoading ? (
+                        <div style={{ padding: '12px 16px', color: '#8B949E', fontSize: '13px', textAlign: 'center' }}>Buscando...</div>
+                      ) : (
+                        searchResults.map((r, i) => (
+                          <div key={i} onClick={() => selectDestino(r)} style={{ padding: '12px 16px', borderTop: i > 0 ? '1px solid #21262D' : 'none', color: '#F0F6FC', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '16px' }}>📍</span>
+                            <span>{r.nombre}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Panel de alertas horizontal — FIX #6 */}
+              {!showRoutePanel && (
+                <div style={{ position: 'absolute', top: '72px', left: '12px', right: '12px', zIndex: 500 }}>
+                  <div style={{ overflowX: 'auto', display: 'flex', gap: '8px', paddingBottom: '4px' }} className="no-scrollbar">
+                    {ALERTAS_TRAFICO.map(a => (
+                      <div key={a.id} onClick={() => { mapRef.current?.flyTo([a.lat, a.lng], 16, { duration: 1 }) }} style={{ background: '#161B22', border: `1px solid ${a.color}50`, borderRadius: '20px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: '14px' }}>{a.icon}</span>
+                        <span style={{ color: '#F0F6FC', fontSize: '12px', fontWeight: '500' }}>{a.titulo}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Bottom sheet de rutas — FIX #5 & #7 */}
+              {showRoutePanel && (
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: '#161B22', borderRadius: '20px 20px 0 0', border: '1px solid #30363D', borderBottom: 'none', zIndex: 600, maxHeight: '72vh', overflowY: 'auto', padding: '16px 16px 24px' }} className="no-scrollbar">
+                  <div style={{ width: '40px', height: '4px', background: '#30363D', borderRadius: '2px', margin: '0 auto 16px' }} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                    <div>
+                      <div style={{ color: '#F0F6FC', fontWeight: '700', fontSize: '16px' }}>Rutas disponibles</div>
+                      <div style={{ color: '#8B949E', fontSize: '13px', marginTop: '2px' }}>Hacia {destinoNombre.split(',')[0]} {routeDistance && ` · ${routeDistance} km`}</div>
+                    </div>
+                    <button onClick={() => { setShowRoutePanel(false); setSearchQuery(''); setRutas([]); }} style={{ background: '#21262D', border: '1px solid #30363D', color: '#8B949E', width: '32px', height: '32px', borderRadius: '8px', cursor: 'pointer', fontSize: '16px' }}>✕</button>
+                  </div>
+                  <div style={{ overflowX: 'auto', display: 'flex', gap: '8px', padding: '12px 0', borderBottom: '1px solid #30363D', marginBottom: '12px' }} className="no-scrollbar">
+                    {[
+                      { i:'🚇', n:'Metro', d:'3 min', c:'#EF4444' },
+                      { i:'🚌', n:'Micro', d:'5 min', c:'#FFD93D' },
+                      { i:'🚲', n:'BipBici', d:'200m', c:'#00D4FF' },
+                      { i:'🛴', n:'Scooter', d:'80m', c:'#FF8C42' }
+                    ].map(t => (
+                      <div key={t.n} style={{ background: '#21262D', border: `1px solid ${t.c}30`, borderRadius: '10px', padding: '8px 12px', flexShrink: 0, textAlign: 'center', minWidth: '72px' }}>
+                        <div style={{ fontSize: '18px' }}>{t.i}</div>
+                        <div style={{ color: t.c, fontSize: '11px', fontWeight: '600', marginTop: '2px' }}>{t.n}</div>
+                        <div style={{ color: '#8B949E', fontSize: '10px' }}>{t.d}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {loadingRoutes ? (
+                    <div style={{ textAlign: 'center', padding: '24px', color: '#8B949E', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                      <div style={{ width: '20px', height: '20px', border: '2px solid #30363D', borderTop: '2px solid #00C896', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                      Calculando rutas reales...
+                    </div>
+                  ) : (
+                    <>
+                      {rutas.map(ruta => (
+                        <div key={ruta.id} onClick={() => setSelectedRoute(ruta)} style={{ background: selectedRoute?.id === ruta.id ? '#00C89615' : '#21262D', border: `2px solid ${selectedRoute?.id === ruta.id ? ruta.badgeColor : '#30363D'}`, borderRadius: '14px', padding: '14px', marginBottom: '10px', cursor: 'pointer', transition: 'all 0.2s' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                            <div>
+                              <div style={{ fontWeight: '600', color: '#F0F6FC', fontSize: '15px' }}>{ruta.nombre}</div>
+                              <div style={{ color: '#8B949E', fontSize: '12px', marginTop: '2px' }}>{ruta.descripcion}</div>
+                            </div>
+                            <span style={{ background: ruta.badgeColor + '20', color: ruta.badgeColor, border: `1px solid ${ruta.badgeColor}40`, borderRadius: '20px', padding: '3px 10px', fontSize: '10px', fontWeight: '700', height: 'fit-content' }}>{ruta.badge}</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>{ruta.iconos.map((ic, i) => (<span key={i} style={{ fontSize: '18px' }}>{ic}</span>))}</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px' }}>
+                            {[{ v: ruta.tiempo + ' min', l: 'TIEMPO', c: '#F0F6FC' }, { v: ruta.precio, l: 'PRECIO', c: '#F0F6FC' }, { v: ruta.co2 + ' CO₂', l: 'EMISIONES', c: ruta.co2Color }].map(m => (
+                              <div key={m.l} style={{ textAlign: 'center' }}>
+                                <div style={{ fontWeight: '700', color: m.c, fontSize: '14px' }}>{m.v}</div>
+                                <div style={{ color: '#8B949E', fontSize: '10px' }}>{m.l}</div>
+                              </div>
+                            ))}
+                          </div>
+                          {selectedRoute?.id === ruta.id && (
+                            <div style={{ marginTop: '8px', textAlign: 'center', color: ruta.badgeColor, fontSize: '12px', fontWeight: '600' }}>✓ Seleccionada</div>
+                          )}
+                        </div>
+                      ))}
+                      {selectedRoute && (
+                        <button onClick={() => startNavigation(selectedRoute)} style={{ width: '100%', background: 'linear-gradient(135deg, #00C896, #00A878)', border: 'none', color: 'white', borderRadius: '14px', padding: '16px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>▶ Iniciar {selectedRoute.nombre.split(' ')[2]}</button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </MapContainer>
           </div>
 
-          <div className="w-full lg:w-[480px] h-screen shadow-2xl relative lg:border-x border-[#30363D] flex flex-col z-[2] pointer-events-none">
+          <div style={{
+            position: 'fixed',
+            top: '56px', left: 0, right: 0, bottom: '60px',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            background: '#0D1117',
+            WebkitOverflowScrolling: 'touch',
+            zIndex: 10,
+            display: activeTab === 'mapa' ? 'none' : 'block'
+          }}>
+          <div className="w-full lg:w-[480px] h-screen shadow-2xl relative lg:border-x border-[#30363D] flex flex-col z-[20] pointer-events-none">
             {/* Header: position fixed, height 56px */}
             <header className="fixed top-0 left-0 right-0 h-[56px] bg-[#0D1117] flex items-center justify-between px-6 z-[1000] border-b border-[#30363D] pointer-events-auto">
               <div className="flex items-center gap-2 cursor-pointer select-none active:scale-95 transition-transform" onClick={handleLogoClick}>
@@ -2091,32 +2475,26 @@ export default function RutaVerde() {
               </button>
             </header>
 
-            <main className="flex-grow overflow-y-auto no-scrollbar pt-[56px] pb-[60px] pointer-events-none">
-              <div className="pointer-events-auto h-full">
-
+            <div className="pointer-events-none h-full">
               <Suspense fallback={<div className="flex items-center justify-center h-full"><Skeleton className="w-full h-64" /></div>}>
-                {activeTab === 'inicio' && <HomeComponent user={user} onNavigate={handleNavigate} stats={stats} alertas={alertas} />}
+                {activeTab === 'inicio' && <div className="pointer-events-auto"><HomeComponent user={user} onNavigate={handleNavigate} stats={stats} alertas={alertas} alertasCargando={alertasCargando} /></div>}
                 {activeTab === 'rutas' && (
-                  <div className="p-6 text-center animate-fade-in">
+                  <div className="p-6 text-center animate-fade-in pointer-events-auto pt-24">
                     <div className="w-20 h-20 bg-[#161B22] border border-[#30363D] rounded-3xl flex items-center justify-center mx-auto mb-6 text-[#00C896]"><Milestone size={40} /></div>
                     <h2 className="text-2xl font-black text-white mb-2">Tus rutas guardadas</h2>
                     <p className="text-[#8B949E] font-bold">Aquí aparecerán tus destinos frecuentes.</p>
                   </div>
                 )}
-                {activeTab === 'mapa' && (
-                  <LiveMapScreen
-                    darkMode={darkMode}
-                    onStartNavigation={handleStartNavigation}
-                    userPos={userPos}
-                    onSetDest={(coords, name) => { setDestCoords(coords); setDestName(name); }}
-                    onSetRoutePoints={setCurrentRoutePoints}
-                  />
+                {activeTab === 'puntos' && <div className="pointer-events-auto"><GamificationScreen points={userPoints} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} co2Total={stats.co2Total} /></div>}
+                {activeTab === 'perfil' && (
+                  <div className="pointer-events-auto">
+                    <PerfilErrorBoundary>
+                      <ProfileScreen user={user} stats={stats} onLogout={handleLogout} darkMode={darkMode} setDarkMode={setDarkMode} />
+                    </PerfilErrorBoundary>
+                  </div>
                 )}
-                {activeTab === 'puntos' && <GamificationScreen points={stats.points} showToast={showToast} redeeming={redeeming} setRedeeming={setRedeeming} co2Total={stats.co2Total} />}
-                {activeTab === 'perfil' && <ProfileScreen user={user} stats={stats} onLogout={handleLogout} darkMode={darkMode} setDarkMode={setDarkMode} />}
               </Suspense>
-              </div>
-            </main>
+            </div>
 
             <nav className="fixed bottom-0 left-0 right-0 h-[60px] bg-[#0D1117] border-t border-white/5 px-8 flex justify-between items-center z-[1000] pointer-events-auto">
               {[
@@ -2138,6 +2516,7 @@ export default function RutaVerde() {
                 </button>
               ))}
             </nav>
+          </div>
           </div>
 
           <div className="hidden lg:block flex-grow bg-[#F0FFF8] dark:bg-slate-950 p-10 overflow-hidden relative">

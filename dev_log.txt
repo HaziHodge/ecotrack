@@ -25,3 +25,10 @@
 1:08:05 AM [vite] hmr update /src/RutaVerde.jsx, /src/index.css
 1:11:01 AM [vite] hmr update /src/RutaVerde.jsx, /src/index.css
 1:11:43 AM [vite] page reload dist/index.html
+1:39:27 AM [vite] hmr update /src/RutaVerde.jsx, /src/index.css
+1:39:31 AM [vite] hmr update /src/RutaVerde.jsx, /src/index.css
+1:39:42 AM [vite] hmr update /src/RutaVerde.jsx, /src/index.css
+1:40:00 AM [vite] hmr update /src/RutaVerde.jsx, /src/index.css
+1:46:36 AM [vite] hmr update /src/RutaVerde.jsx, /src/index.css
+2:05:23 AM [vite] hmr update /src/RutaVerde.jsx, /src/index.css
+2:06:54 AM [vite] hmr update /src/RutaVerde.jsx, /src/index.css
